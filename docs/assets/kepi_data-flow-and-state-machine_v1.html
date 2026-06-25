@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>《客批》数据流与状态机图 v1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #020617;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --cyan: #22d3ee;
+      --cyan-fill: rgba(8, 51, 68, 0.4);
+      --emerald: #34d399;
+      --emerald-fill: rgba(6, 78, 59, 0.4);
+      --violet: #a78bfa;
+      --violet-fill: rgba(76, 29, 149, 0.4);
+      --rose: #fb7185;
+      --rose-fill: rgba(136, 19, 55, 0.4);
+      --amber: #fbbf24;
+      --amber-fill: rgba(120, 53, 15, 0.3);
+      --orange: #fb923c;
+      --orange-fill: rgba(251, 146, 60, 0.3);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "JetBrains Mono", monospace; }
+    body {
+      background-image:
+        linear-gradient(rgba(30, 41, 59, 0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 41, 59, 0.18) 1px, transparent 1px);
+      background-size: 40px 40px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1600px; margin: 0 auto; padding: 24px; }
+    .header {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px;
+    }
+    .title-wrap { display: flex; align-items: center; gap: 12px; }
+    .pulse {
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+      70% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .subtitle { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .toolbar { position: relative; display: flex; align-items: center; gap: 8px; }
+    .toolbar-toggle {
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: rgba(15, 23, 42, 0.85); color: var(--text);
+      cursor: pointer; font-size: 18px; line-height: 1;
+    }
+    .toolbar-actions { display: none; gap: 8px; }
+    .toolbar.open .toolbar-actions { display: flex; }
+    .toolbar button.action {
+      height: 34px; padding: 0 12px; border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 8px; background: rgba(15, 23, 42, 0.9);
+      color: var(--text); cursor: pointer; font-family: inherit; font-size: 12px;
+    }
+    .card {
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.72);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+      overflow: hidden;
+    }
+    .diagram-shell { padding: 16px; }
+    svg { width: 100%; height: auto; display: block; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .info-card { padding: 16px 18px; }
+    .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .card-dot { width: 10px; height: 10px; border-radius: 999px; }
+    .card-header h3 { margin: 0; font-size: 14px; }
+    .info-card ul {
+      margin: 0; padding-left: 16px; color: var(--muted); font-size: 12px; line-height: 1.7;
+    }
+    .footer { margin-top: 16px; color: var(--muted); font-size: 11px; text-align: center; }
+    @media print { .toolbar { display: none !important; } }
+    @media (max-width: 1100px) { .summary-grid { grid-template-columns: 1fr; } .header { flex-direction: column; align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <div class="container" id="report-container">
+    <div class="header">
+      <div class="title-wrap">
+        <div class="pulse"></div>
+        <div>
+          <h1>《客批》数据流与状态机图</h1>
+          <div class="subtitle">UI → Zustand → pure TS reducer → Canvas / API / localStorage · scene machine included</div>
+        </div>
+      </div>
+      <div class="toolbar" id="toolbar">
+        <button class="toolbar-toggle" id="toolbarToggle" aria-label="toggle toolbar">⋯</button>
+        <div class="toolbar-actions">
+          <button class="action" onclick="copyAsImage()">Copy</button>
+          <button class="action" onclick="downloadPNG()">PNG</button>
+          <button class="action" onclick="downloadPDF()">PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card diagram-shell">
+      <svg viewBox="0 0 1600 1120" role="img" aria-label="客批数据流与状态机图">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrow-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+          <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+          </marker>
+          <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+          </marker>
+        </defs>
+
+        <rect x="0" y="0" width="1600" height="1120" fill="#020617"/>
+        <rect x="0" y="0" width="1600" height="1120" fill="url(#grid)" opacity="0.8"/>
+
+        <rect x="24" y="24" width="1552" height="1072" rx="12" fill="rgba(2,6,23,0.82)" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="8,4"/>
+        <text x="44" y="48" fill="#22d3ee" font-size="11" font-weight="700">DATA FLOW + STATE MACHINE</text>
+
+        <!-- Source actions -->
+        <rect x="60" y="90" width="250" height="128" rx="6" fill="#0f172a"/>
+        <rect x="60" y="90" width="250" height="128" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="185" y="118" fill="white" font-size="12" font-weight="700" text-anchor="middle">Player / Timer Input</text>
+        <text x="185" y="140" fill="#94a3b8" font-size="9" text-anchor="middle">buy, sell, move, refresh, end turn</text>
+        <text x="185" y="164" fill="#94a3b8" font-size="9" text-anchor="middle">camera / gesture / UI clicks</text>
+        <text x="185" y="188" fill="#94a3b8" font-size="9" text-anchor="middle">feeds the store action dispatcher</text>
+
+        <rect x="350" y="90" width="280" height="128" rx="6" fill="#0f172a"/>
+        <rect x="350" y="90" width="280" height="128" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="490" y="118" fill="white" font-size="12" font-weight="700" text-anchor="middle">Zustand Store</text>
+        <text x="490" y="140" fill="#94a3b8" font-size="9" text-anchor="middle">gameStore + uiStore</text>
+        <text x="490" y="164" fill="#94a3b8" font-size="9" text-anchor="middle">holds view mirror, selection, dialogs</text>
+        <text x="490" y="188" fill="#94a3b8" font-size="9" text-anchor="middle">dispatches one action at a time</text>
+
+        <rect x="670" y="90" width="340" height="128" rx="6" fill="#0f172a"/>
+        <rect x="670" y="90" width="340" height="128" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="840" y="118" fill="white" font-size="12" font-weight="700" text-anchor="middle">Zod Validation</text>
+        <text x="840" y="140" fill="#94a3b8" font-size="9" text-anchor="middle">Action / Snapshot / API response schema checks</text>
+        <text x="840" y="164" fill="#94a3b8" font-size="9" text-anchor="middle">guards against malformed data and drift</text>
+        <text x="840" y="188" fill="#94a3b8" font-size="9" text-anchor="middle">shared across app, engine, api, tests</text>
+
+        <rect x="1050" y="90" width="490" height="128" rx="6" fill="#0f172a"/>
+        <rect x="1050" y="90" width="490" height="128" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1295" y="118" fill="white" font-size="12" font-weight="700" text-anchor="middle">Pure TS Reducer Engine</text>
+        <text x="1295" y="140" fill="#94a3b8" font-size="9" text-anchor="middle">single truth: GameSnapshot in, GameSnapshot out</text>
+        <text x="1295" y="164" fill="#94a3b8" font-size="9" text-anchor="middle">scene, battle, shop, economy, progression</text>
+        <text x="1295" y="188" fill="#94a3b8" font-size="9" text-anchor="middle">immutable state transitions only</text>
+
+        <path d="M 310 154 L 350 154" stroke="#22d3ee" stroke-width="1.6" fill="none" marker-end="url(#arrow-cyan)"/>
+        <path d="M 630 154 L 670 154" stroke="#fb7185" stroke-width="1.6" fill="none" marker-end="url(#arrow-rose)"/>
+        <path d="M 1010 154 L 1050 154" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-violet)"/>
+
+        <!-- State machine area -->
+        <rect x="52" y="250" width="1496" height="286" rx="10" fill="rgba(2,6,23,0.88)" stroke="#34d399" stroke-width="1.2"/>
+        <text x="72" y="274" fill="#34d399" font-size="11" font-weight="700">SCENE STATE MACHINE</text>
+
+        <rect x="80" y="304" width="290" height="162" rx="6" fill="#0f172a"/>
+        <rect x="80" y="304" width="290" height="162" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="225" y="332" fill="white" font-size="12" font-weight="700" text-anchor="middle">prep</text>
+        <text x="225" y="354" fill="#94a3b8" font-size="9" text-anchor="middle">buy, sell, move, refresh, upgrade</text>
+        <text x="225" y="378" fill="#94a3b8" font-size="9" text-anchor="middle">shop / population / board layout</text>
+        <text x="225" y="402" fill="#94a3b8" font-size="9" text-anchor="middle">time out → auto battle</text>
+        <text x="225" y="426" fill="#94a3b8" font-size="9" text-anchor="middle">snapshot saves happen here too</text>
+        <text x="225" y="450" fill="#94a3b8" font-size="9" text-anchor="middle">UI-heavy, not simulation-heavy</text>
+
+        <rect x="414" y="304" width="290" height="162" rx="6" fill="#0f172a"/>
+        <rect x="414" y="304" width="290" height="162" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="559" y="332" fill="white" font-size="12" font-weight="700" text-anchor="middle">battle</text>
+        <text x="559" y="354" fill="#94a3b8" font-size="9" text-anchor="middle">fixed tick simulation loop</text>
+        <text x="559" y="378" fill="#94a3b8" font-size="9" text-anchor="middle">attacks, deaths, skills, end checks</text>
+        <text x="559" y="402" fill="#94a3b8" font-size="9" text-anchor="middle">returns BattleResult + event log</text>
+        <text x="559" y="426" fill="#94a3b8" font-size="9" text-anchor="middle">no UI writes, engine owns the result</text>
+        <text x="559" y="450" fill="#94a3b8" font-size="9" text-anchor="middle">fully deterministic for tests</text>
+
+        <rect x="748" y="304" width="290" height="162" rx="6" fill="#0f172a"/>
+        <rect x="748" y="304" width="290" height="162" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="893" y="332" fill="white" font-size="12" font-weight="700" text-anchor="middle">settlement</text>
+        <text x="893" y="354" fill="#94a3b8" font-size="9" text-anchor="middle">apply battle result to GameState</text>
+        <text x="893" y="378" fill="#94a3b8" font-size="9" text-anchor="middle">survival, kebi, sangzi, homeRepair</text>
+        <text x="893" y="402" fill="#94a3b8" font-size="9" text-anchor="middle">win and loss branches both handled</text>
+        <text x="893" y="426" fill="#94a3b8" font-size="9" text-anchor="middle">produces stage transition command</text>
+        <text x="893" y="450" fill="#94a3b8" font-size="9" text-anchor="middle">also emits recap events for UI</text>
+
+        <rect x="1082" y="304" width="390" height="162" rx="6" fill="#0f172a"/>
+        <rect x="1082" y="304" width="390" height="162" rx="6" fill="rgba(251,146,60,0.28)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="1277" y="332" fill="white" font-size="12" font-weight="700" text-anchor="middle">progression / ending</text>
+        <text x="1277" y="354" fill="#94a3b8" font-size="9" text-anchor="middle">stage progression, victory threshold, fail path</text>
+        <text x="1277" y="378" fill="#94a3b8" font-size="9" text-anchor="middle">stage 6 + kebi>=5 = win, survival<=0 = lose</text>
+        <text x="1277" y="402" fill="#94a3b8" font-size="9" text-anchor="middle">scene switches to ending state</text>
+        <text x="1277" y="426" fill="#94a3b8" font-size="9" text-anchor="middle">can trigger AI letter generation request</text>
+        <text x="1277" y="450" fill="#94a3b8" font-size="9" text-anchor="middle">resolves ending narrative payload</text>
+
+        <path d="M 370 385 L 414 385" stroke="#22d3ee" stroke-width="1.6" fill="none" marker-end="url(#arrow-cyan)"/>
+        <path d="M 704 385 L 748 385" stroke="#34d399" stroke-width="1.6" fill="none" marker-end="url(#arrow-emerald)"/>
+        <path d="M 1038 385 L 1082 385" stroke="#fbbf24" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+
+        <path d="M 225 466 C 225 520, 559 520, 559 466" stroke="#22d3ee" stroke-width="1.2" fill="none" stroke-dasharray="5,4" marker-end="url(#arrow-cyan)"/>
+        <text x="392" y="512" fill="#22d3ee" font-size="8" text-anchor="middle">timeout / auto-start battle</text>
+
+        <path d="M 559 466 C 559 520, 893 520, 893 466" stroke="#34d399" stroke-width="1.2" fill="none" stroke-dasharray="5,4" marker-end="url(#arrow-emerald)"/>
+        <text x="726" y="512" fill="#34d399" font-size="8" text-anchor="middle">battle result → settlement</text>
+
+        <path d="M 893 466 C 893 520, 1277 520, 1277 466" stroke="#fb923c" stroke-width="1.2" fill="none" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+        <text x="1085" y="512" fill="#fb923c" font-size="8" text-anchor="middle">stage / ending resolution</text>
+
+        <!-- Persistence / data / AI lane -->
+        <rect x="52" y="570" width="1496" height="284" rx="10" fill="rgba(2,6,23,0.88)" stroke="#a78bfa" stroke-width="1.2"/>
+        <text x="72" y="594" fill="#a78bfa" font-size="11" font-weight="700">PERSISTENCE / DATA / AI / RENDER</text>
+
+        <rect x="74" y="620" width="334" height="150" rx="6" fill="#0f172a"/>
+        <rect x="74" y="620" width="334" height="150" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="241" y="648" fill="white" font-size="12" font-weight="700" text-anchor="middle">localStorage</text>
+        <text x="241" y="670" fill="#94a3b8" font-size="9" text-anchor="middle">snapshot / settings / debug prefs</text>
+        <text x="241" y="694" fill="#94a3b8" font-size="9" text-anchor="middle">loaded on startup, saved on key transitions</text>
+        <text x="241" y="718" fill="#94a3b8" font-size="9" text-anchor="middle">no cloud truth, no database</text>
+        <text x="241" y="742" fill="#94a3b8" font-size="9" text-anchor="middle">optional continue-last-game behavior</text>
+
+        <rect x="440" y="620" width="360" height="150" rx="6" fill="#0f172a"/>
+        <rect x="440" y="620" width="360" height="150" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="620" y="648" fill="white" font-size="12" font-weight="700" text-anchor="middle">TS const data</text>
+        <text x="620" y="670" fill="#94a3b8" font-size="9" text-anchor="middle">pieces / enemies / stages / letters / balance</text>
+        <text x="620" y="694" fill="#94a3b8" font-size="9" text-anchor="middle">versioned source assets, not runtime state</text>
+        <text x="620" y="718" fill="#94a3b8" font-size="9" text-anchor="middle">used by engine, UI, prompt, tests</text>
+        <text x="620" y="742" fill="#94a3b8" font-size="9" text-anchor="middle">schema-safe and git-friendly</text>
+
+        <rect x="832" y="620" width="320" height="150" rx="6" fill="#0f172a"/>
+        <rect x="832" y="620" width="320" height="150" rx="6" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="992" y="648" fill="white" font-size="12" font-weight="700" text-anchor="middle">app/api/ai</text>
+        <text x="992" y="670" fill="#94a3b8" font-size="9" text-anchor="middle">Node runtime proxy, secrets hidden</text>
+        <text x="992" y="694" fill="#94a3b8" font-size="9" text-anchor="middle">digital letter generation only</text>
+        <text x="992" y="718" fill="#94a3b8" font-size="9" text-anchor="middle">falls back to local letter pool on failure</text>
+        <text x="992" y="742" fill="#94a3b8" font-size="9" text-anchor="middle">response schema-checked before UI use</text>
+
+        <rect x="1182" y="620" width="340" height="150" rx="6" fill="#0f172a"/>
+        <rect x="1182" y="620" width="340" height="150" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1352" y="648" fill="white" font-size="12" font-weight="700" text-anchor="middle">Canvas / React render</text>
+        <text x="1352" y="670" fill="#94a3b8" font-size="9" text-anchor="middle">store snapshot → visual frame</text>
+        <text x="1352" y="694" fill="#94a3b8" font-size="9" text-anchor="middle">battle layers, dialogs, ending FX, debug UI</text>
+        <text x="1352" y="718" fill="#94a3b8" font-size="9" text-anchor="middle">requestAnimationFrame keeps it smooth</text>
+        <text x="1352" y="742" fill="#94a3b8" font-size="9" text-anchor="middle">pure view, no rules ownership</text>
+
+        <path d="M 408 695 L 440 695" stroke="#fb7185" stroke-width="1.5" fill="none" marker-end="url(#arrow-rose)"/>
+        <path d="M 800 695 L 832 695" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#arrow-violet)"/>
+        <path d="M 1152 695 L 1182 695" stroke="#fb923c" stroke-width="1.5" fill="none" marker-end="url(#arrow-orange)"/>
+
+        <!-- Cross-links -->
+        <path d="M 241 620 L 241 556 C 241 528, 893 528, 893 466" stroke="#fb7185" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrow-rose)"/>
+        <text x="314" y="548" fill="#fb7185" font-size="8">save snapshot after settlement / end</text>
+
+        <path d="M 620 620 L 620 512 C 620 510, 620 510, 620 466" stroke="#a78bfa" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrow-violet)"/>
+        <text x="638" y="548" fill="#a78bfa" font-size="8">shared config for engine & prompts</text>
+
+        <path d="M 992 620 L 992 552 C 992 520, 1277 520, 1277 466" stroke="#fb923c" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrow-orange)"/>
+        <text x="1086" y="548" fill="#fb923c" font-size="8">ending can request digital letter</text>
+
+        <path d="M 1352 620 L 1352 552 C 1352 522, 1352 522, 1352 466" stroke="#34d399" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrow-emerald)"/>
+        <text x="1380" y="548" fill="#34d399" font-size="8">render updated snapshot each frame</text>
+
+        <!-- Footer band -->
+        <rect x="76" y="890" width="1448" height="86" rx="6" fill="rgba(15,23,42,0.92)" stroke="#334155" stroke-width="1"/>
+        <text x="100" y="918" fill="#94a3b8" font-size="10">Flow rules:</text>
+        <text x="194" y="918" fill="#22d3ee" font-size="10">input enters store</text>
+        <text x="330" y="918" fill="#94a3b8" font-size="10">·</text>
+        <text x="346" y="918" fill="#a78bfa" font-size="10">zod checks it</text>
+        <text x="464" y="918" fill="#94a3b8" font-size="10">·</text>
+        <text x="480" y="918" fill="#34d399" font-size="10">engine returns immutable snapshot</text>
+        <text x="724" y="918" fill="#94a3b8" font-size="10">·</text>
+        <text x="740" y="918" fill="#fb7185" font-size="10">storage persists only local state</text>
+        <text x="100" y="946" fill="#94a3b8" font-size="10">Scene rules:</text>
+        <text x="194" y="946" fill="#22d3ee" font-size="10">prep = manual setup</text>
+        <text x="364" y="946" fill="#94a3b8" font-size="10">·</text>
+        <text x="380" y="946" fill="#34d399" font-size="10">battle = deterministic sim</text>
+        <text x="574" y="946" fill="#94a3b8" font-size="10">·</text>
+        <text x="590" y="946" fill="#fbbf24" font-size="10">settlement = apply outcome</text>
+        <text x="806" y="946" fill="#94a3b8" font-size="10">·</text>
+        <text x="822" y="946" fill="#fb923c" font-size="10">ending = may call AI proxy</text>
+      </svg>
+    </div>
+
+    <div class="summary-grid">
+      <div class="card info-card">
+        <div class="card-header"><div class="card-dot" style="background:#22d3ee"></div><h3>Input</h3></div>
+        <ul>
+          <li>玩家操作先进入 Zustand。</li>
+          <li>Zod 做入口校验，防止坏数据流入引擎。</li>
+          <li>引擎只吃合法动作。</li>
+        </ul>
+      </div>
+      <div class="card info-card">
+        <div class="card-header"><div class="card-dot" style="background:#34d399"></div><h3>Loop</h3></div>
+        <ul>
+          <li>prep / battle / settlement / ending 四态流转。</li>
+          <li>battle 是固定 tick，结果可复现。</li>
+          <li>settlement 才真正推进胜负与资源。</li>
+        </ul>
+      </div>
+      <div class="card info-card">
+        <div class="card-header"><div class="card-dot" style="background:#a78bfa"></div><h3>Output</h3></div>
+        <ul>
+          <li>snapshot 回到 store，再给 UI 和 Canvas 渲染。</li>
+          <li>localStorage 只存本机数据。</li>
+          <li>ending 时才可能触发 AI 代理。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer">《客批》数据流与状态机图 v1 · local-first · immutable snapshot loop</div>
+  </div>
+
+  <script>
+    const toolbar = document.getElementById('toolbar');
+    document.getElementById('toolbarToggle').addEventListener('click', () => {
+      toolbar.classList.toggle('open');
+    });
+
+    async function captureCanvas() {
+      const el = document.getElementById('report-container');
+      const rect = el.getBoundingClientRect();
+      return await html2canvas(el, {
+        backgroundColor: '#020617',
+        scale: 2,
+        x: 0,
+        y: 0,
+        width: rect.width,
+        height: rect.height,
+        useCORS: true,
+        ignoreElements: (node) => node.classList && node.classList.contains('toolbar')
+      });
+    }
+
+    async function copyAsImage() {
+      const canvas = await captureCanvas();
+      canvas.toBlob(async (blob) => {
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      });
+    }
+
+    async function downloadPNG() {
+      const canvas = await captureCanvas();
+      const link = document.createElement('a');
+      link.download = 'kepi-dataflow-statechart.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    async function downloadPDF() {
+      const canvas = await captureCanvas();
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save('kepi-dataflow-statechart.pdf');
+    }
+  </script>
+</body>
+</html>

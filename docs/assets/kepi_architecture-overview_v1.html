@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>《客批》架构总览图 v1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #020617;
+      --panel: #0f172a;
+      --panel-2: #111827;
+      --grid: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --cyan: #22d3ee;
+      --cyan-fill: rgba(8, 51, 68, 0.4);
+      --emerald: #34d399;
+      --emerald-fill: rgba(6, 78, 59, 0.4);
+      --violet: #a78bfa;
+      --violet-fill: rgba(76, 29, 149, 0.4);
+      --amber: #fbbf24;
+      --amber-fill: rgba(120, 53, 15, 0.3);
+      --rose: #fb7185;
+      --rose-fill: rgba(136, 19, 55, 0.4);
+      --orange: #fb923c;
+      --orange-fill: rgba(251, 146, 60, 0.3);
+      --slate: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "JetBrains Mono", monospace; }
+    body {
+      background-image:
+        linear-gradient(rgba(30, 41, 59, 0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 41, 59, 0.18) 1px, transparent 1px);
+      background-size: 40px 40px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .title-wrap { display: flex; align-items: center; gap: 12px; }
+    .pulse {
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+      70% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .toolbar {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toolbar-toggle {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .toolbar-actions {
+      display: none;
+      gap: 8px;
+    }
+    .toolbar.open .toolbar-actions { display: flex; }
+    .toolbar button.action {
+      height: 34px;
+      padding: 0 12px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .card {
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.72);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+      overflow: hidden;
+    }
+    .diagram-shell { padding: 16px; }
+    svg { width: 100%; height: auto; display: block; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .info-card {
+      padding: 16px 18px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .card-dot { width: 10px; height: 10px; border-radius: 999px; }
+    .card-header h3 { margin: 0; font-size: 14px; }
+    .info-card ul {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .footer {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 11px;
+      text-align: center;
+    }
+    @media print { .toolbar { display: none !important; } }
+    @media (max-width: 1100px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      .header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="report-container">
+    <div class="header">
+      <div class="title-wrap">
+        <div class="pulse"></div>
+        <div>
+          <h1>《客批》架构总览图</h1>
+          <div class="subtitle">Next.js · App Router · Zustand · Canvas 2D · 纯 TS 引擎 · AI 代理 · 本机存档</div>
+        </div>
+      </div>
+      <div class="toolbar" id="toolbar">
+        <button class="toolbar-toggle" id="toolbarToggle" aria-label="toggle toolbar">⋯</button>
+        <div class="toolbar-actions">
+          <button class="action" onclick="copyAsImage()">Copy</button>
+          <button class="action" onclick="downloadPNG()">PNG</button>
+          <button class="action" onclick="downloadPDF()">PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card diagram-shell">
+      <svg viewBox="0 0 1600 980" role="img" aria-label="客批架构总览图">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <rect x="0" y="0" width="1600" height="980" fill="#020617"/>
+        <rect x="0" y="0" width="1600" height="980" fill="url(#grid)" opacity="0.8"/>
+
+        <!-- Region boundaries -->
+        <rect x="24" y="24" width="1552" height="210" rx="12" fill="rgba(120,53,15,0.10)" stroke="#fbbf24" stroke-width="1.4" stroke-dasharray="8,4"/>
+        <text x="44" y="48" fill="#fbbf24" font-size="11" font-weight="700">DEPLOYMENT / DELIVERY</text>
+
+        <rect x="24" y="250" width="1552" height="310" rx="12" fill="rgba(8,51,68,0.06)" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="8,4"/>
+        <text x="44" y="274" fill="#22d3ee" font-size="11" font-weight="700">BROWSER RUNTIME / INTERACTION LAYER</text>
+
+        <rect x="24" y="576" width="1552" height="380" rx="12" fill="rgba(6,78,59,0.06)" stroke="#34d399" stroke-width="1.2" stroke-dasharray="8,4"/>
+        <text x="44" y="600" fill="#34d399" font-size="11" font-weight="700">DOMAIN ENGINE / DATA / PERSISTENCE / TESTS</text>
+
+        <!-- Deployment block -->
+        <rect x="60" y="74" width="280" height="128" rx="6" fill="#0f172a"/>
+        <rect x="60" y="74" width="280" height="128" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="200" y="104" fill="white" font-size="12" font-weight="700" text-anchor="middle">Vercel</text>
+        <text x="200" y="126" fill="#94a3b8" font-size="9" text-anchor="middle">single-package deployment target</text>
+        <text x="200" y="150" fill="#94a3b8" font-size="9" text-anchor="middle">static assets + app routes + serverless AI proxy</text>
+        <text x="200" y="174" fill="#94a3b8" font-size="9" text-anchor="middle">Node.js runtime for API route</text>
+
+        <rect x="380" y="74" width="280" height="128" rx="6" fill="#0f172a"/>
+        <rect x="380" y="74" width="280" height="128" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="520" y="104" fill="white" font-size="12" font-weight="700" text-anchor="middle">Git + CI</text>
+        <text x="520" y="126" fill="#94a3b8" font-size="9" text-anchor="middle">versioned TS configs, PR review, build checks</text>
+        <text x="520" y="150" fill="#94a3b8" font-size="9" text-anchor="middle">Vitest + Playwright gate core flows</text>
+        <text x="520" y="174" fill="#94a3b8" font-size="9" text-anchor="middle">reproducible releases</text>
+
+        <rect x="700" y="74" width="840" height="128" rx="6" fill="#0f172a"/>
+        <rect x="700" y="74" width="840" height="128" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="1120" y="104" fill="white" font-size="12" font-weight="700" text-anchor="middle">External Services</text>
+        <text x="1120" y="126" fill="#94a3b8" font-size="9" text-anchor="middle">AI provider · real侨批 sources · Google Fonts (optional)</text>
+        <text x="1120" y="150" fill="#94a3b8" font-size="9" text-anchor="middle">AI content is optional and fully degradable</text>
+        <text x="1120" y="174" fill="#94a3b8" font-size="9" text-anchor="middle">final endings use local assets + local audio fallback</text>
+
+        <!-- Top arrow flow -->
+        <path d="M 340 138 L 380 138" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)"/>
+        <path d="M 660 138 L 700 138" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)"/>
+
+        <!-- Browser / runtime cluster -->
+        <rect x="52" y="296" width="1496" height="238" rx="10" fill="rgba(2,6,23,0.88)" stroke="#22d3ee" stroke-width="1.2"/>
+        <text x="72" y="320" fill="#22d3ee" font-size="11" font-weight="700">CLIENT BROWSER APP</text>
+
+        <rect x="76" y="340" width="245" height="150" rx="6" fill="#0f172a"/>
+        <rect x="76" y="340" width="245" height="150" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="198" y="368" fill="white" font-size="12" font-weight="700" text-anchor="middle">app/page.tsx</text>
+        <text x="198" y="388" fill="#94a3b8" font-size="9" text-anchor="middle">single-page main battlefield</text>
+        <text x="198" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">server shell + client gameplay</text>
+        <text x="198" y="432" fill="#94a3b8" font-size="9" text-anchor="middle">scene switching: prep / battle / ending</text>
+        <text x="198" y="454" fill="#94a3b8" font-size="9" text-anchor="middle">debug page lives beside it</text>
+
+        <rect x="346" y="340" width="240" height="150" rx="6" fill="#0f172a"/>
+        <rect x="346" y="340" width="240" height="150" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="466" y="368" fill="white" font-size="12" font-weight="700" text-anchor="middle">React UI</text>
+        <text x="466" y="388" fill="#94a3b8" font-size="9" text-anchor="middle">shadcn/ui · tailwind components</text>
+        <text x="466" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">shop · panels · dialogs · tabs</text>
+        <text x="466" y="432" fill="#94a3b8" font-size="9" text-anchor="middle">settlement screens · settings · debug</text>
+        <text x="466" y="454" fill="#94a3b8" font-size="9" text-anchor="middle">reads store, emits user actions</text>
+
+        <rect x="616" y="340" width="260" height="150" rx="6" fill="#0f172a"/>
+        <rect x="616" y="340" width="260" height="150" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="746" y="368" fill="white" font-size="12" font-weight="700" text-anchor="middle">Canvas 2D Layers</text>
+        <text x="746" y="388" fill="#94a3b8" font-size="9" text-anchor="middle">background / units / effects</text>
+        <text x="746" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">board, combat, transitions, ending FX</text>
+        <text x="746" y="432" fill="#94a3b8" font-size="9" text-anchor="middle">painted from store snapshots</text>
+        <text x="746" y="454" fill="#94a3b8" font-size="9" text-anchor="middle">native Canvas 2D only</text>
+
+        <rect x="906" y="340" width="240" height="150" rx="6" fill="#0f172a"/>
+        <rect x="906" y="340" width="240" height="150" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="1026" y="368" fill="white" font-size="12" font-weight="700" text-anchor="middle">Zustand Stores</text>
+        <text x="1026" y="388" fill="#94a3b8" font-size="9" text-anchor="middle">gameStore · uiStore</text>
+        <text x="1026" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">UI mirror + action dispatch only</text>
+        <text x="1026" y="432" fill="#94a3b8" font-size="9" text-anchor="middle">no rule truth, no simulation ownership</text>
+        <text x="1026" y="454" fill="#94a3b8" font-size="9" text-anchor="middle">syncs engine snapshot to view state</text>
+
+        <rect x="1176" y="340" width="340" height="150" rx="6" fill="#0f172a"/>
+        <rect x="1176" y="340" width="340" height="150" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1346" y="368" fill="white" font-size="12" font-weight="700" text-anchor="middle">Client Runtime Contracts</text>
+        <text x="1346" y="388" fill="#94a3b8" font-size="9" text-anchor="middle">fixed tick + requestAnimationFrame</text>
+        <text x="1346" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">scene state machine: prep / battle / ending / debug</text>
+        <text x="1346" y="432" fill="#94a3b8" font-size="9" text-anchor="middle">Zod validates payloads & snapshots</text>
+        <text x="1346" y="454" fill="#94a3b8" font-size="9" text-anchor="middle">断网可玩 + localStorage fallback</text>
+
+        <!-- Browser arrows -->
+        <path d="M 321 415 L 346 415" stroke="#22d3ee" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-cyan)"/>
+        <path d="M 586 415 L 616 415" stroke="#22d3ee" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-cyan)"/>
+        <path d="M 876 415 L 906 415" stroke="#22d3ee" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-cyan)"/>
+        <path d="M 1146 415 L 1176 415" stroke="#22d3ee" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-cyan)"/>
+
+        <!-- Engine / data / persistence cluster -->
+        <rect x="52" y="622" width="1496" height="290" rx="10" fill="rgba(2,6,23,0.88)" stroke="#34d399" stroke-width="1.2"/>
+        <text x="72" y="646" fill="#34d399" font-size="11" font-weight="700">DOMAIN ENGINE & DATA</text>
+
+        <rect x="72" y="670" width="300" height="208" rx="6" fill="#0f172a"/>
+        <rect x="72" y="670" width="300" height="208" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="222" y="698" fill="white" font-size="12" font-weight="700" text-anchor="middle">engine/stateMachine</text>
+        <text x="222" y="720" fill="#94a3b8" font-size="9" text-anchor="middle">唯一真相 · 纯函数 reducer + immutable state</text>
+        <text x="222" y="744" fill="#94a3b8" font-size="9" text-anchor="middle">prep / battle / ending / settings</text>
+        <text x="222" y="768" fill="#94a3b8" font-size="9" text-anchor="middle">GameAction → next GameSnapshot</text>
+        <text x="222" y="792" fill="#94a3b8" font-size="9" text-anchor="middle">battle / economy / shop / progression</text>
+        <text x="222" y="816" fill="#94a3b8" font-size="9" text-anchor="middle">unit tests center here</text>
+
+        <rect x="396" y="670" width="300" height="208" rx="6" fill="#0f172a"/>
+        <rect x="396" y="670" width="300" height="208" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="546" y="698" fill="white" font-size="12" font-weight="700" text-anchor="middle">data/</text>
+        <text x="546" y="720" fill="#94a3b8" font-size="9" text-anchor="middle">TS constant modules, no runtime DB</text>
+        <text x="546" y="744" fill="#94a3b8" font-size="9" text-anchor="middle">pieces · enemies · stages · letters · balance</text>
+        <text x="546" y="768" fill="#94a3b8" font-size="9" text-anchor="middle">static configs versioned in Git</text>
+        <text x="546" y="792" fill="#94a3b8" font-size="9" text-anchor="middle">typed by TS, validated by Zod</text>
+        <text x="546" y="816" fill="#94a3b8" font-size="9" text-anchor="middle">AI fallback content also lives here</text>
+
+        <rect x="720" y="670" width="280" height="208" rx="6" fill="#0f172a"/>
+        <rect x="720" y="670" width="280" height="208" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="860" y="698" fill="white" font-size="12" font-weight="700" text-anchor="middle">lib/ + schemas/</text>
+        <text x="860" y="720" fill="#94a3b8" font-size="9" text-anchor="middle">Zod schemas, AI adapter, storage helpers</text>
+        <text x="860" y="744" fill="#94a3b8" font-size="9" text-anchor="middle">shared runtime validation and utilities</text>
+        <text x="860" y="768" fill="#94a3b8" font-size="9" text-anchor="middle">keeps engine inputs and API outputs aligned</text>
+        <text x="860" y="792" fill="#94a3b8" font-size="9" text-anchor="middle">thin adapters, no business rules</text>
+        <text x="860" y="816" fill="#94a3b8" font-size="9" text-anchor="middle">storage key constants, prompt builders</text>
+
+        <rect x="1024" y="670" width="250" height="208" rx="6" fill="#0f172a"/>
+        <rect x="1024" y="670" width="250" height="208" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="1149" y="698" fill="white" font-size="12" font-weight="700" text-anchor="middle">localStorage</text>
+        <text x="1149" y="720" fill="#94a3b8" font-size="9" text-anchor="middle">settings · optional snapshot · debug prefs</text>
+        <text x="1149" y="744" fill="#94a3b8" font-size="9" text-anchor="middle">no database, no cloud sync</text>
+        <text x="1149" y="768" fill="#94a3b8" font-size="9" text-anchor="middle">small and fast enough for black-hatathon demo</text>
+        <text x="1149" y="792" fill="#94a3b8" font-size="9" text-anchor="middle">used only as local persistence layer</text>
+        <text x="1149" y="816" fill="#94a3b8" font-size="9" text-anchor="middle">load on start, save on key transitions</text>
+
+        <rect x="1300" y="670" width="228" height="208" rx="6" fill="#0f172a"/>
+        <rect x="1300" y="670" width="228" height="208" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1414" y="698" fill="white" font-size="12" font-weight="700" text-anchor="middle">Tests</text>
+        <text x="1414" y="720" fill="#94a3b8" font-size="9" text-anchor="middle">Vitest · Playwright</text>
+        <text x="1414" y="744" fill="#94a3b8" font-size="9" text-anchor="middle">engine rules · smoke flows</text>
+        <text x="1414" y="768" fill="#94a3b8" font-size="9" text-anchor="middle">battle, economy, progression, storage</text>
+        <text x="1414" y="792" fill="#94a3b8" font-size="9" text-anchor="middle">main page, ending page, local restore</text>
+        <text x="1414" y="816" fill="#94a3b8" font-size="9" text-anchor="middle">guardrails for future refactors</text>
+
+        <!-- Engine arrows -->
+        <path d="M 372 774 L 396 774" stroke="#34d399" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-emerald)"/>
+        <path d="M 696 774 L 720 774" stroke="#34d399" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-emerald)"/>
+        <path d="M 1000 774 L 1024 774" stroke="#34d399" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-emerald)"/>
+        <path d="M 1274 774 L 1300 774" stroke="#34d399" stroke-width="1.6" fill="none" marker-end="url(#arrowhead-emerald)"/>
+
+        <!-- Inter-layer side flows -->
+        <path d="M 222 490 L 222 670" stroke="#22d3ee" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrowhead-cyan)"/>
+        <text x="236" y="586" fill="#22d3ee" font-size="8">actions</text>
+
+        <path d="M 546 878 L 1149 878" stroke="#34d399" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrowhead-emerald)"/>
+        <text x="810" y="866" fill="#34d399" font-size="8">snapshot persist</text>
+
+        <path d="M 860 670 L 860 558" stroke="#a78bfa" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrowhead-violet)"/>
+        <text x="874" y="612" fill="#a78bfa" font-size="8">schema + adapters</text>
+
+        <path d="M 1414 670 L 1414 558" stroke="#fb7185" stroke-width="1.2" fill="none" stroke-dasharray="4,4" marker-end="url(#arrowhead)"/>
+        <text x="1428" y="612" fill="#fb7185" font-size="8">validate flows</text>
+
+        <!-- AI API path -->
+        <rect x="980" y="232" width="560" height="42" rx="6" fill="rgba(251,146,60,0.18)" stroke="#fb923c" stroke-width="1.2"/>
+        <text x="1260" y="258" fill="#fb923c" font-size="9" text-anchor="middle">app/api/ai/route.ts → AI provider → fallback letter pool</text>
+        <path d="M 1260 274 L 1260 340" stroke="#fb923c" stroke-width="1.4" fill="none" stroke-dasharray="5,4" marker-end="url(#arrowhead)"/>
+
+        <!-- Legend -->
+        <rect x="72" y="900" width="1450" height="42" rx="6" fill="rgba(15,23,42,0.9)" stroke="#334155" stroke-width="1"/>
+        <text x="94" y="926" fill="#94a3b8" font-size="10">Legend:</text>
+        <text x="162" y="926" fill="#22d3ee" font-size="10">Frontend</text>
+        <text x="246" y="926" fill="#94a3b8" font-size="10">·</text>
+        <text x="262" y="926" fill="#34d399" font-size="10">Engine / Tests / CI</text>
+        <text x="412" y="926" fill="#94a3b8" font-size="10">·</text>
+        <text x="428" y="926" fill="#a78bfa" font-size="10">Data / External</text>
+        <text x="548" y="926" fill="#94a3b8" font-size="10">·</text>
+        <text x="564" y="926" fill="#fb7185" font-size="10">Persistence / UI state</text>
+        <text x="742" y="926" fill="#94a3b8" font-size="10">·</text>
+        <text x="758" y="926" fill="#fb923c" font-size="10">AI proxy flow</text>
+      </svg>
+    </div>
+
+    <div class="summary-grid">
+      <div class="card info-card">
+        <div class="card-header"><div class="card-dot" style="background:#22d3ee"></div><h3>Runtime</h3></div>
+        <ul>
+          <li>单页主战场，状态切换完成整局体验。</li>
+          <li>外层 Server Component，主体 Client Component。</li>
+          <li>Canvas 负责棋盘与战斗，React 负责外围 UI。</li>
+        </ul>
+      </div>
+      <div class="card info-card">
+        <div class="card-header"><div class="card-dot" style="background:#34d399"></div><h3>Domain</h3></div>
+        <ul>
+          <li>纯 TS reducer 引擎是唯一真相。</li>
+          <li>engine / data / store / lib 分层明确。</li>
+          <li>Zod 负责输入、配置、API 返回校验。</li>
+        </ul>
+      </div>
+      <div class="card info-card">
+        <div class="card-header"><div class="card-dot" style="background:#fb7185"></div><h3>Delivery</h3></div>
+        <ul>
+          <li>AI 走 app/api 代理，弱网自动降级。</li>
+          <li>localStorage 只存设置与可选快照。</li>
+          <li>Vitest + Playwright 兜住核心流程。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer">《客批》架构总览图 v1 · nextjs app router · single package · offline-capable demo</div>
+  </div>
+
+  <script>
+    const toolbar = document.getElementById('toolbar');
+    document.getElementById('toolbarToggle').addEventListener('click', () => {
+      toolbar.classList.toggle('open');
+    });
+
+    async function captureCanvas() {
+      const el = document.getElementById('report-container');
+      const rect = el.getBoundingClientRect();
+      return await html2canvas(el, {
+        backgroundColor: '#020617',
+        scale: 2,
+        x: 0,
+        y: 0,
+        width: rect.width,
+        height: rect.height,
+        useCORS: true,
+        ignoreElements: (node) => node.classList && node.classList.contains('toolbar')
+      });
+    }
+
+    async function copyAsImage() {
+      const canvas = await captureCanvas();
+      canvas.toBlob(async (blob) => {
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      });
+    }
+
+    async function downloadPNG() {
+      const canvas = await captureCanvas();
+      const link = document.createElement('a');
+      link.download = 'kepi-architecture-overview.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    async function downloadPDF() {
+      const canvas = await captureCanvas();
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save('kepi-architecture-overview.pdf');
+    }
+  </script>
+</body>
+</html>

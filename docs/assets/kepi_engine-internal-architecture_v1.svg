@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" role="img" aria-label="客批引擎内部架构图">
+  <style><![CDATA[
+    text { font-family: "JetBrains Mono", monospace; }
+  ]]></style>
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrow-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+        </defs>
+
+        <rect x="0" y="0" width="1600" height="1040" fill="#020617"/>
+        <rect x="0" y="0" width="1600" height="1040" fill="url(#grid)" opacity="0.8"/>
+
+        <rect x="24" y="24" width="1552" height="980" rx="12" fill="rgba(2,6,23,0.82)" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="8,4"/>
+        <text x="44" y="48" fill="#22d3ee" font-size="11" font-weight="700">DOMAIN ENGINE INTERNALS</text>
+
+        <!-- Input layer -->
+        <rect x="64" y="82" width="280" height="136" rx="6" fill="#0f172a"/>
+        <rect x="64" y="82" width="280" height="136" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="204" y="110" fill="white" font-size="12" font-weight="700" text-anchor="middle">UI Action Stream</text>
+        <text x="204" y="132" fill="#94a3b8" font-size="9" text-anchor="middle">Zustand dispatch / user input / timers</text>
+        <text x="204" y="156" fill="#94a3b8" font-size="9" text-anchor="middle">BUY · SELL · MOVE · REFRESH · START</text>
+        <text x="204" y="180" fill="#94a3b8" font-size="9" text-anchor="middle">single source of actions, not truth</text>
+        <text x="204" y="198" fill="#94a3b8" font-size="9" text-anchor="middle">feeds reducer only</text>
+
+        <rect x="388" y="82" width="360" height="136" rx="6" fill="#0f172a"/>
+        <rect x="388" y="82" width="360" height="136" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="568" y="110" fill="white" font-size="12" font-weight="700" text-anchor="middle">Zod Guard Layer</text>
+        <text x="568" y="132" fill="#94a3b8" font-size="9" text-anchor="middle">validate GameAction / GameSnapshot / API payloads</text>
+        <text x="568" y="156" fill="#94a3b8" font-size="9" text-anchor="middle">reject invalid configs, protect engine boundaries</text>
+        <text x="568" y="180" fill="#94a3b8" font-size="9" text-anchor="middle">shared schemas across app / lib / api</text>
+        <text x="568" y="198" fill="#94a3b8" font-size="9" text-anchor="middle">typed runtime contracts</text>
+
+        <rect x="788" y="82" width="748" height="136" rx="6" fill="#0f172a"/>
+        <rect x="788" y="82" width="748" height="136" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1162" y="110" fill="white" font-size="12" font-weight="700" text-anchor="middle">Engine Core Entry</text>
+        <text x="1162" y="132" fill="#94a3b8" font-size="9" text-anchor="middle">reduceGameState(snapshot, action) → next snapshot</text>
+        <text x="1162" y="156" fill="#94a3b8" font-size="9" text-anchor="middle">pure function, immutable return, deterministic output</text>
+        <text x="1162" y="180" fill="#94a3b8" font-size="9" text-anchor="middle">orchestrates battle / economy / shop / progression</text>
+        <text x="1162" y="198" fill="#94a3b8" font-size="9" text-anchor="middle">state machine owns scene transitions</text>
+
+        <path d="M 344 150 L 388 150" stroke="#22d3ee" stroke-width="1.6" fill="none" marker-end="url(#arrow-cyan)"/>
+        <path d="M 748 150 L 788 150" stroke="#a78bfa" stroke-width="1.6" fill="none" marker-end="url(#arrow-violet)"/>
+
+        <!-- Core modules -->
+        <rect x="52" y="258" width="1496" height="436" rx="10" fill="rgba(2,6,23,0.88)" stroke="#34d399" stroke-width="1.2"/>
+        <text x="72" y="282" fill="#34d399" font-size="11" font-weight="700">ENGINE MODULES</text>
+
+        <rect x="74" y="312" width="350" height="160" rx="6" fill="#0f172a"/>
+        <rect x="74" y="312" width="350" height="160" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="249" y="340" fill="white" font-size="12" font-weight="700" text-anchor="middle">stateMachine/</text>
+        <text x="249" y="362" fill="#94a3b8" font-size="9" text-anchor="middle">prep → battle → settlement → ending</text>
+        <text x="249" y="386" fill="#94a3b8" font-size="9" text-anchor="middle">controls allowed actions per scene</text>
+        <text x="249" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">validates transition guards</text>
+        <text x="249" y="434" fill="#94a3b8" font-size="9" text-anchor="middle">prevents illegal cross-scene mutations</text>
+        <text x="249" y="458" fill="#94a3b8" font-size="9" text-anchor="middle">single scene truth at any moment</text>
+
+        <rect x="452" y="312" width="350" height="160" rx="6" fill="#0f172a"/>
+        <rect x="452" y="312" width="350" height="160" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="627" y="340" fill="white" font-size="12" font-weight="700" text-anchor="middle">battle/</text>
+        <text x="627" y="362" fill="#94a3b8" font-size="9" text-anchor="middle">fixed tick simulation + event stream</text>
+        <text x="627" y="386" fill="#94a3b8" font-size="9" text-anchor="middle">targeting · damage · armor · critless combat</text>
+        <text x="627" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">unit death, skill trigger, round end events</text>
+        <text x="627" y="434" fill="#94a3b8" font-size="9" text-anchor="middle">battle result returned as BattleResult</text>
+        <text x="627" y="458" fill="#94a3b8" font-size="9" text-anchor="middle">pure deterministic sim for tests</text>
+
+        <rect x="830" y="312" width="350" height="160" rx="6" fill="#0f172a"/>
+        <rect x="830" y="312" width="350" height="160" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="1005" y="340" fill="white" font-size="12" font-weight="700" text-anchor="middle">economy/ + shop/</text>
+        <text x="1005" y="362" fill="#94a3b8" font-size="9" text-anchor="middle">gold, income, interest, win/lose streak</text>
+        <text x="1005" y="386" fill="#94a3b8" font-size="9" text-anchor="middle">refresh, buy, sell, population upgrade</text>
+        <text x="1005" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">budget rules stay inside engine</text>
+        <text x="1005" y="434" fill="#94a3b8" font-size="9" text-anchor="middle">shop state derived from stage + economy</text>
+        <text x="1005" y="458" fill="#94a3b8" font-size="9" text-anchor="middle">no UI money authority</text>
+
+        <rect x="1208" y="312" width="318" height="160" rx="6" fill="#0f172a"/>
+        <rect x="1208" y="312" width="318" height="160" rx="6" fill="rgba(251,146,60,0.28)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="1367" y="340" fill="white" font-size="12" font-weight="700" text-anchor="middle">progression/</text>
+        <text x="1367" y="362" fill="#94a3b8" font-size="9" text-anchor="middle">stage flow, victory/defeat, ending trigger</text>
+        <text x="1367" y="386" fill="#94a3b8" font-size="9" text-anchor="middle">survival, kebi, sangzi, homeRepair</text>
+        <text x="1367" y="410" fill="#94a3b8" font-size="9" text-anchor="middle">calculates win condition and fail path</text>
+        <text x="1367" y="434" fill="#94a3b8" font-size="9" text-anchor="middle">keeps finish order consistent</text>
+        <text x="1367" y="458" fill="#94a3b8" font-size="9" text-anchor="middle">returns next stage or result</text>
+
+        <path d="M 424 392 L 452 392" stroke="#22d3ee" stroke-width="1.5" fill="none" marker-end="url(#arrow-cyan)"/>
+        <path d="M 802 392 L 830 392" stroke="#34d399" stroke-width="1.5" fill="none" marker-end="url(#arrow-emerald)"/>
+        <path d="M 1180 392 L 1208 392" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#arrow-violet)"/>
+
+        <!-- Shared domain data -->
+        <rect x="74" y="506" width="698" height="160" rx="6" fill="#0f172a"/>
+        <rect x="74" y="506" width="698" height="160" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="423" y="534" fill="white" font-size="12" font-weight="700" text-anchor="middle">Shared Domain Types + Static Data</text>
+        <text x="423" y="556" fill="#94a3b8" font-size="9" text-anchor="middle">types.ts · pieces.ts · enemies.ts · stages.ts · letters.ts · balance.ts</text>
+        <text x="423" y="580" fill="#94a3b8" font-size="9" text-anchor="middle">TS const modules are versioned source assets, not runtime truth</text>
+        <text x="423" y="604" fill="#94a3b8" font-size="9" text-anchor="middle">Zod schemas align compile-time types and runtime validation</text>
+        <text x="423" y="628" fill="#94a3b8" font-size="9" text-anchor="middle">battle configs, enemy pools, ending letters, balance knobs</text>
+        <text x="423" y="652" fill="#94a3b8" font-size="9" text-anchor="middle">safe to reuse in tests, UI, API prompts, storage migrations</text>
+
+        <rect x="800" y="506" width="726" height="160" rx="6" fill="#0f172a"/>
+        <rect x="800" y="506" width="726" height="160" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="1163" y="534" fill="white" font-size="12" font-weight="700" text-anchor="middle">Persistence + Test Surfaces</text>
+        <text x="1163" y="556" fill="#94a3b8" font-size="9" text-anchor="middle">localStorage snapshot / settings / debug prefs</text>
+        <text x="1163" y="580" fill="#94a3b8" font-size="9" text-anchor="middle">loadSnapshot() · saveSnapshot() · clearSnapshot()</text>
+        <text x="1163" y="604" fill="#94a3b8" font-size="9" text-anchor="middle">Vitest targets reducer, battle, economy, progression</text>
+        <text x="1163" y="628" fill="#94a3b8" font-size="9" text-anchor="middle">Playwright covers main page, battle completion, restore</text>
+        <text x="1163" y="652" fill="#94a3b8" font-size="9" text-anchor="middle">tests defend against rule drift during rapid iteration</text>
+
+        <path d="M 772 586 L 800 586" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#arrow-violet)"/>
+        <path d="M 800 604 L 772 604" stroke="#fb7185" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)"/>
+
+        <!-- AI / storage side path -->
+        <rect x="74" y="704" width="468" height="220" rx="6" fill="#0f172a"/>
+        <rect x="74" y="704" width="468" height="220" rx="6" fill="rgba(251,146,60,0.28)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="308" y="732" fill="white" font-size="12" font-weight="700" text-anchor="middle">api/ai route (proxy, not engine)</text>
+        <text x="308" y="754" fill="#94a3b8" font-size="9" text-anchor="middle">server-side Node runtime, secrets hidden from browser</text>
+        <text x="308" y="778" fill="#94a3b8" font-size="9" text-anchor="middle">inputs: stage / kebi / homeRepair / battleSummary</text>
+        <text x="308" y="802" fill="#94a3b8" font-size="9" text-anchor="middle">outputs: digital letter + fallback content</text>
+        <text x="308" y="826" fill="#94a3b8" font-size="9" text-anchor="middle">AI is enhancement only; game remains playable offline</text>
+        <text x="308" y="850" fill="#94a3b8" font-size="9" text-anchor="middle">response is schema-checked, then rendered by UI</text>
+
+        <rect x="574" y="704" width="452" height="220" rx="6" fill="#0f172a"/>
+        <rect x="574" y="704" width="452" height="220" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="800" y="732" fill="white" font-size="12" font-weight="700" text-anchor="middle">storage / sync helpers</text>
+        <text x="800" y="754" fill="#94a3b8" font-size="9" text-anchor="middle">localStorage keys, versioning, snapshot hydration</text>
+        <text x="800" y="778" fill="#94a3b8" font-size="9" text-anchor="middle">startup load, periodic save, debug restore</text>
+        <text x="800" y="802" fill="#94a3b8" font-size="9" text-anchor="middle">client-owned persistence only</text>
+        <text x="800" y="826" fill="#94a3b8" font-size="9" text-anchor="middle">no database, no cloud sync</text>
+        <text x="800" y="850" fill="#94a3b8" font-size="9" text-anchor="middle">acts as thin adapter around snapshot object</text>
+
+        <rect x="1052" y="704" width="474" height="220" rx="6" fill="#0f172a"/>
+        <rect x="1052" y="704" width="474" height="220" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1289" y="732" fill="white" font-size="12" font-weight="700" text-anchor="middle">Testing contracts</text>
+        <text x="1289" y="754" fill="#94a3b8" font-size="9" text-anchor="middle">engine invariants: win/lose, star-upgrade, economy, stages</text>
+        <text x="1289" y="778" fill="#94a3b8" font-size="9" text-anchor="middle">battle determinism, round timing, damage math</text>
+        <text x="1289" y="802" fill="#94a3b8" font-size="9" text-anchor="middle">Playwright smoke: entry, finish, restore, ending flow</text>
+        <text x="1289" y="826" fill="#94a3b8" font-size="9" text-anchor="middle">tests lock down the pure reducer contract</text>
+        <text x="1289" y="850" fill="#94a3b8" font-size="9" text-anchor="middle">debug page surfaces state for rapid diagnosis</text>
+
+        <path d="M 542 814 L 574 814" stroke="#fb923c" stroke-width="1.4" fill="none" marker-end="url(#arrowhead)"/>
+        <path d="M 1026 814 L 1052 814" stroke="#34d399" stroke-width="1.4" fill="none" marker-end="url(#arrow-emerald)"/>
+
+        <!-- Footer label -->
+        <rect x="76" y="952" width="1448" height="34" rx="6" fill="rgba(15,23,42,0.92)" stroke="#334155" stroke-width="1"/>
+        <text x="100" y="974" fill="#94a3b8" font-size="10">Principles:</text>
+        <text x="188" y="974" fill="#22d3ee" font-size="10">engine is truth</text>
+        <text x="308" y="974" fill="#94a3b8" font-size="10">·</text>
+        <text x="324" y="974" fill="#a78bfa" font-size="10">data is versioned source</text>
+        <text x="500" y="974" fill="#94a3b8" font-size="10">·</text>
+        <text x="516" y="974" fill="#fb923c" font-size="10">AI is optional enhancement</text>
+        <text x="724" y="974" fill="#94a3b8" font-size="10">·</text>
+        <text x="740" y="974" fill="#34d399" font-size="10">offline-first demo path</text>
+      </svg>
