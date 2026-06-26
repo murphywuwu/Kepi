@@ -1,4 +1,4 @@
-import type { BattleEvent, Enemy, Piece, ScenePhase } from "@/types";
+import type { BattleEvent, BoardPosition, Enemy, Piece, ScenePhase } from "@/types";
 import type { BoardMetrics } from "@/lib/game/boardLayout";
 import type { TulouVisualStage } from "@/lib/game/assets";
 import type { ImageCache } from "@/lib/game/imageCache";
@@ -17,6 +17,10 @@ export type EffectFlash = {
   kind?: "attack" | "repair";
 };
 
+import type { HoveredUnit } from "@/store/uiStore";
+
+export type CanvasHoverTarget = Pick<HoveredUnit, "side" | "unitId">;
+
 export type CanvasRenderState = {
   metrics: BoardMetrics;
   phase: ScenePhase;
@@ -24,7 +28,7 @@ export type CanvasRenderState = {
   homeRepair: number;
   allies: Piece[];
   enemies: Enemy[];
-  allyCellsHighlighted: boolean;
+  hoveredAllyCell: BoardPosition | null;
   selectedPieceId: string | null;
   battleEvents: BattleEvent[];
   battleTick: number;
@@ -33,6 +37,7 @@ export type CanvasRenderState = {
   timeMs: number;
   transitionBurst: TransitionBurst | null;
   prepFx: PrepFx[];
+  hoveredUnit: CanvasHoverTarget | null;
   imageCache: ImageCache;
   portraitCache: ImageCache;
   requestRepaint?: () => void;

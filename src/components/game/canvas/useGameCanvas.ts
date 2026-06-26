@@ -5,17 +5,29 @@ import { spawnEnemiesForStage } from "@/engine/battle";
 import { homeRepairStage } from "@/engine/progression";
 import { ENEMY_VISUALS, PIECE_VISUALS } from "@/lib/game/assets";
 import { computeBoardMetrics, pixelToBoard } from "@/lib/game/boardLayout";
+import {
+  battleReplayEventCount,
+  replayBattleHp,
+} from "@/lib/game/battleReplay";
 import { loadCachedImage } from "@/lib/game/imageCache";
 import {
   TULOU_BACKGROUND_SRCS,
   transitionBurstForCrossing,
 } from "@/lib/game/tulouBackground";
 import type { BoardPosition, GameSnapshot } from "@/types";
+import { hitTestUnits } from "@/lib/game/unitHitTest";
+import {
+  resolveAllyBoardPosition,
+  resolveEnemyBoardPosition,
+  tooltipAnchorFromSprite,
+  unitSpriteMetrics,
+} from "@/lib/game/unitLayout";
+import { useFxStore } from "@/store/fxStore";
+import { useUIStore } from "@/store/uiStore";
 import { buildBattleEffects, renderGameCanvas } from "./renderFrame";
 import { SCENE_EFFECT_SRCS } from "./renderAtmosphere";
 import { PREP_FX_SRCS } from "./renderPrepFx";
 import type { CanvasRenderState } from "./types";
-import { useFxStore } from "@/store/fxStore";
 
 const AMBIENT_FPS = 24;
 const TRANSITION_BURST_MS = 450;
@@ -30,11 +42,12 @@ type UseGameCanvasOptions = {
   snapshot: GameSnapshot;
   selectedPieceId: string | null;
   onCellClick?: (position: BoardPosition) => void;
+  onUnitClick?: (pieceId: string) => void;
 };
 
 export function useGameCanvas(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
-  { snapshot, selectedPieceId, onCellClick }: UseGameCanvasOptions,
+  { snapshot, selectedPieceId, onCellClick, onUnitClick }: UseGameCanvasOptions,
 ) {
   const imageCache = useRef(new Map<string, HTMLImageElement | "loading" | "error">());
   const portraitCache = useRef(new Map<string, HTMLImageElement | "loading" | "error">());
@@ -48,6 +61,19 @@ export function useGameCanvas(
   const prevHomeRepairRef = useRef(snapshot.state.homeRepair);
   const lastKebiFxRef = useRef(snapshot.state.kebi);
   const prepFxRef = useRef(useFxStore.getState().prepFx);
+  const hoveredTargetRef = useRef<{ side: "ally" | "enemy"; unitId: string } | null>(
+    null,
+  );
+  const hoveredAllyCellRef = useRef<BoardPosition | null>(null);
+  const lastHoveredCellKeyRef = useRef("");
+
+  const setHoveredAllyCell = (cell: BoardPosition | null) => {
+    const key = cell ? `${cell.x},${cell.y}` : "";
+    if (key === lastHoveredCellKeyRef.current) return;
+    lastHoveredCellKeyRef.current = key;
+    hoveredAllyCellRef.current = cell;
+    paintRef.current();
+  };
 
   useEffect(() => {
     return useFxStore.subscribe((state) => {
@@ -57,8 +83,25 @@ export function useGameCanvas(
   }, []);
 
   useEffect(() => {
+    let lastHoverKey = "";
+    return useUIStore.subscribe((state) => {
+      const hover = state.hoveredUnit;
+      const nextTarget = hover ? { side: hover.side, unitId: hover.unitId } : null;
+      const nextKey = nextTarget ? `${nextTarget.side}:${nextTarget.unitId}` : "";
+      hoveredTargetRef.current = nextTarget;
+      if (nextKey !== lastHoverKey) {
+        lastHoverKey = nextKey;
+        paintRef.current();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     snapshotRef.current = snapshot;
     selectedRef.current = selectedPieceId;
+    if (!selectedPieceId) {
+      setHoveredAllyCell(null);
+    }
   }, [snapshot, selectedPieceId]);
 
   useEffect(() => {
@@ -110,7 +153,7 @@ export function useGameCanvas(
     const current = snapshotRef.current;
     const metrics = computeBoardMetrics(rect.width, rect.height);
     const tulouStage = homeRepairStage(current.state.homeRepair);
-    const enemies =
+    let enemies =
       current.phase === "prep" ||
       current.phase === "battle" ||
       current.phase === "settlement"
@@ -118,11 +161,27 @@ export function useGameCanvas(
         : [];
 
     const battleEvents = current.lastBattleResult?.events ?? [];
+    let allies = current.board;
+
+    if (
+      current.lastBattleResult &&
+      (current.phase === "battle" || current.phase === "settlement")
+    ) {
+      const eventCount = battleReplayEventCount(
+        current.phase,
+        battleTickRef.current,
+        battleEvents.length,
+      );
+      const replayed = replayBattleHp(allies, enemies, battleEvents, eventCount);
+      allies = replayed.allies;
+      enemies = replayed.enemies;
+    }
+
     const effects = buildBattleEffects(
       battleEvents,
       battleTickRef.current,
       current.board,
-      enemies,
+      spawnEnemiesForStage(current.state.stage),
     );
 
     const burst = burstRef.current;
@@ -145,9 +204,9 @@ export function useGameCanvas(
       phase: current.phase,
       tulouStage,
       homeRepair: current.state.homeRepair,
-      allies: current.board,
+      allies,
       enemies,
-      allyCellsHighlighted: current.phase === "prep" && Boolean(selectedRef.current),
+      hoveredAllyCell: hoveredAllyCellRef.current,
       selectedPieceId: selectedRef.current,
       battleEvents,
       battleTick: battleTickRef.current,
@@ -159,6 +218,7 @@ export function useGameCanvas(
       timeMs: timeMsRef.current || now,
       transitionBurst,
       prepFx: prepFxRef.current,
+      hoveredUnit: hoveredTargetRef.current,
       imageCache: imageCache.current,
       portraitCache: portraitCache.current,
       requestRepaint: () => paintRef.current(),
@@ -245,7 +305,10 @@ export function useGameCanvas(
         battleAnimating ||
         snapshotRef.current.phase === "battle" ||
         snapshotRef.current.phase === "settlement" ||
-        prepFxRef.current.length > 0;
+        prepFxRef.current.length > 0 ||
+        (snapshotRef.current.phase === "prep" &&
+          Boolean(selectedRef.current) &&
+          hoveredAllyCellRef.current !== null);
 
       const shouldPaint = needsAmbient || now - lastPaint >= frameMs;
 
@@ -268,7 +331,101 @@ export function useGameCanvas(
     if (snapshot.phase !== "battle") {
       battleFrameRef.current = 0;
     }
+    useUIStore.getState().setHoveredUnit(null);
   }, [snapshot.phase]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const updatePointer = (clientX: number, clientY: number) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const current = snapshotRef.current;
+      const metrics = computeBoardMetrics(rect.width, rect.height);
+      const enemies =
+        current.phase === "prep" ||
+        current.phase === "battle" ||
+        current.phase === "settlement"
+          ? spawnEnemiesForStage(current.state.stage)
+          : [];
+
+      const placing =
+        current.phase === "prep" && Boolean(selectedRef.current);
+
+      if (placing) {
+        const allyCell = pixelToBoard(x, y, metrics, true);
+        setHoveredAllyCell(allyCell);
+        if (allyCell) {
+          canvas.style.cursor = "pointer";
+          useUIStore.getState().setHoveredUnit(null);
+          return;
+        }
+      } else {
+        setHoveredAllyCell(null);
+      }
+
+      const hit = hitTestUnits(
+        x,
+        y,
+        metrics,
+        current.board,
+        enemies,
+        current.phase,
+        { skipAllies: placing },
+      );
+
+      if (!hit) {
+        canvas.style.cursor = placing ? "default" : "";
+        useUIStore.getState().setHoveredUnit(null);
+        return;
+      }
+
+      canvas.style.cursor = "pointer";
+      let position;
+      if (hit.side === "ally") {
+        const allyIndex = current.board.findIndex((piece) => piece.id === hit.id);
+        const piece = current.board[allyIndex];
+        if (!piece) return;
+        position = resolveAllyBoardPosition(piece, allyIndex);
+      } else {
+        const enemyIndex = enemies.findIndex((enemy) => enemy.id === hit.id);
+        const enemy = enemies[enemyIndex];
+        if (!enemy) return;
+        position = resolveEnemyBoardPosition(enemy, enemyIndex, enemies.length);
+      }
+      const anchor = tooltipAnchorFromSprite(
+        unitSpriteMetrics(position, metrics),
+        rect,
+      );
+
+      useUIStore.getState().setHoveredUnit({
+        side: hit.side,
+        unitId: hit.id,
+        anchorX: anchor.anchorX,
+        anchorY: anchor.anchorY,
+      });
+    };
+
+    const handleMove = (event: MouseEvent) => {
+      updatePointer(event.clientX, event.clientY);
+    };
+
+    const handleLeave = () => {
+      canvas.style.cursor = "";
+      setHoveredAllyCell(null);
+      useUIStore.getState().setHoveredUnit(null);
+    };
+
+    canvas.addEventListener("mousemove", handleMove);
+    canvas.addEventListener("mouseleave", handleLeave);
+    return () => {
+      canvas.removeEventListener("mousemove", handleMove);
+      canvas.removeEventListener("mouseleave", handleLeave);
+      canvas.style.cursor = "";
+    };
+  }, [canvasRef]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -288,11 +445,49 @@ export function useGameCanvas(
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       const metrics = computeBoardMetrics(rect.width, rect.height);
-      const cell = pixelToBoard(x, y, metrics, snapshotRef.current.phase === "prep");
-      if (cell) onCellClick(cell);
+      const current = snapshotRef.current;
+
+      if (current.phase !== "prep") return;
+
+      const enemies = spawnEnemiesForStage(current.state.stage);
+      const selectedId = selectedRef.current;
+
+      if (selectedId) {
+        const hit = hitTestUnits(
+          x,
+          y,
+          metrics,
+          current.board,
+          enemies,
+          current.phase,
+        );
+        if (hit?.side === "ally" && hit.id !== selectedId) {
+          onUnitClick?.(hit.id);
+          return;
+        }
+
+        const cell = pixelToBoard(x, y, metrics, true);
+        if (cell) {
+          onCellClick?.(cell);
+          return;
+        }
+        return;
+      }
+
+      const hit = hitTestUnits(
+        x,
+        y,
+        metrics,
+        current.board,
+        enemies,
+        current.phase,
+      );
+      if (hit?.side === "ally") {
+        onUnitClick?.(hit.id);
+      }
     };
 
     canvas.addEventListener("click", handleClick);
     return () => canvas.removeEventListener("click", handleClick);
-  }, [canvasRef, onCellClick]);
+  }, [canvasRef, onCellClick, onUnitClick]);
 }

@@ -1,16 +1,16 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ASSET_MANIFEST } from "@/data/assets";
 import { PIECE_TEMPLATES } from "@/engine/constants";
 import { PIECE_VISUALS } from "@/lib/game/assets";
+import { groupShopOffers } from "@/lib/game/shopOffers";
 import { useGameStore } from "@/store/gameStore";
 import { shopSlotAnchor, useFxStore } from "@/store/fxStore";
 import { useUIStore } from "@/store/uiStore";
 import type { PieceType } from "@/types";
 import { cn } from "@/lib/utils";
-import { GameIcon, WoodButton, WoodPanel } from "@/components/game/ui";
+import { GameIcon, PieceFigure, WoodButton, WoodPanel } from "@/components/game/ui";
 
 const UI = ASSET_MANIFEST.ui;
 
@@ -24,11 +24,14 @@ export function ShopStrip() {
   const { shop, state, board, phase } = snapshot;
   const [refreshFlash, setRefreshFlash] = useState(false);
 
+  const shopOffers = useMemo(() => groupShopOffers(shop.slots), [shop.slots]);
+
   if (phase !== "prep") return null;
 
-  const buy = (pieceType: PieceType, slotIndex: number) => {
+  const buy = (pieceType: PieceType) => {
+    const slotIndex = shop.slots.indexOf(pieceType);
     if (buyFromShop(pieceType)) {
-      const anchor = shopSlotAnchor(slotIndex);
+      const anchor = shopSlotAnchor(slotIndex >= 0 ? slotIndex : 0);
       pushPrepFx({
         kind: "buy_piece",
         ...anchor,
@@ -106,27 +109,27 @@ export function ShopStrip() {
         </div>
 
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {shop.slots.map((slot, index) => (
-              <button
-                key={`${slot}_${index}`}
-                type="button"
-                data-testid="shop-slot"
-                data-piece={slot}
-                className="kepi-shop-slot transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => buy(slot, index)}
-              >
-                <div className="kepi-shop-slot-inner">
-                  <PiecePortrait type={slot} size={36} />
-                  <span className="max-w-[4rem] truncate text-[0.65rem] text-kepi-ink">
-                    {PIECE_VISUALS[slot].label}
-                  </span>
-                  <span className="inline-flex items-center gap-0.5 text-[0.6rem] font-medium text-kepi-gold">
+          <div className="flex flex-wrap items-end gap-1 sm:gap-2">
+            {shopOffers.map((offer) => (
+              <PieceFigure
+                key={offer.type}
+                type={offer.type}
+                height={88}
+                label={PIECE_VISUALS[offer.type].label}
+                testId="shop-slot"
+                onClick={() => buy(offer.type)}
+                badge={
+                  <span className="kepi-piece-figure-badge">
+                    {offer.count > 1 ? (
+                      <span className="text-[0.55rem] text-kepi-ink-muted">
+                        ×{offer.count}
+                      </span>
+                    ) : null}
                     <GameIcon src={UI.gold} size={12} />
-                    {PIECE_TEMPLATES[slot].cost}
+                    {PIECE_TEMPLATES[offer.type].cost}
                   </span>
-                </div>
-              </button>
+                }
+              />
             ))}
           </div>
 
@@ -169,72 +172,61 @@ export function BenchStrip() {
   const sellSelected = useGameStore((state) => state.sellSelected);
   const pushToast = useUIStore((state) => state.pushToast);
 
-  if (phase !== "prep" || board.length === 0) return null;
+  const unplaced = board.filter((piece) => piece.position === null);
+
+  if (phase !== "prep" || unplaced.length === 0) return null;
+
+  const selectedOnBench = unplaced.some((piece) => piece.id === selectedPieceId);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[9.5rem] z-20 px-[5%] sm:bottom-[10.5rem]">
-      <div className="pointer-events-auto mx-auto flex max-w-3xl flex-wrap items-center gap-2">
-        <div className="kepi-hud-tag shrink-0">
-          <div className="kepi-hud-tag-inner">
-            <div className="kepi-hud-tag-stack">
-              <span className="kepi-hud-label">备战</span>
-              <span className="kepi-hud-value text-[0.6875rem] font-normal text-kepi-ink-muted">
-                点选落位
-              </span>
-            </div>
-          </div>
+    <div className="pointer-events-none absolute inset-x-0 bottom-[9.5rem] z-20 flex justify-center px-[5%] sm:bottom-[10.5rem]">
+      <div className="kepi-bench-float pointer-events-auto">
+        <span className="kepi-bench-float-label">
+          待落位
+          <span className="kepi-bench-float-count">{unplaced.length}</span>
+        </span>
+
+        <div className="kepi-bench-float-divider" aria-hidden />
+
+        <div className="kepi-bench-float-roster">
+          {unplaced.map((piece) => (
+            <PieceFigure
+              key={piece.id}
+              type={piece.type}
+              variant="bench"
+              height={76}
+              selected={selectedPieceId === piece.id}
+              testId="bench-piece"
+              testPieceId={piece.id}
+              onClick={() =>
+                setSelectedPiece(selectedPieceId === piece.id ? null : piece.id)
+              }
+              badge={
+                piece.star > 1 ? (
+                  <span className="kepi-piece-figure-badge kepi-piece-figure-badge-star">
+                    ★{piece.star}
+                  </span>
+                ) : undefined
+              }
+            />
+          ))}
         </div>
-        {board.map((piece) => (
-          <button
-            key={piece.id}
-            type="button"
-            data-testid="bench-piece"
-            data-piece={piece.type}
-            data-piece-id={piece.id}
-            className={cn(
-              "kepi-shop-slot transition-transform hover:scale-[1.02]",
-              selectedPieceId === piece.id &&
-                "ring-2 ring-kepi-accent ring-offset-1 ring-offset-transparent",
-            )}
-            onClick={() =>
-              setSelectedPiece(selectedPieceId === piece.id ? null : piece.id)
-            }
-          >
-            <div className="kepi-shop-slot-inner min-h-0 flex-row gap-2 px-3 py-1.5">
-              <PiecePortrait type={piece.type} size={28} />
-              <span className="text-xs text-kepi-ink">
-                {PIECE_VISUALS[piece.type].label}
-                <span className="ml-1 text-kepi-gold">★{piece.star}</span>
-              </span>
-            </div>
-          </button>
-        ))}
-        {selectedPieceId && (
-          <WoodButton
-            variant="danger"
-            className="px-3 py-1.5 text-xs"
-            onClick={() => {
-              if (sellSelected()) pushToast("已卖出棋子", "default");
-            }}
-          >
-            卖出
-          </WoodButton>
-        )}
+
+        {selectedOnBench ? (
+          <>
+            <div className="kepi-bench-float-divider" aria-hidden />
+            <WoodButton
+              variant="danger"
+              className="kepi-bench-float-sell px-2.5 py-1 text-[0.65rem]"
+              onClick={() => {
+                if (sellSelected()) pushToast("已卖出棋子", "default");
+              }}
+            >
+              卖出
+            </WoodButton>
+          </>
+        ) : null}
       </div>
     </div>
-  );
-}
-
-function PiecePortrait({ type, size }: { type: PieceType; size: number }) {
-  const visual = PIECE_VISUALS[type];
-  return (
-    <Image
-      src={visual.portrait}
-      alt={visual.label}
-      width={size}
-      height={size}
-      className="shrink-0 object-contain object-bottom drop-shadow-sm"
-      draggable={false}
-    />
   );
 }

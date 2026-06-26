@@ -12,6 +12,7 @@ import { HudBar, LetterDrawer } from "./HudBar";
 import { BenchStrip, ShopStrip } from "./ShopStrip";
 import { SettingsMenu } from "./SettingsMenu";
 import { ToastHost } from "./ToastHost";
+import { UnitInspectOverlay } from "./UnitInspectOverlay";
 
 const PREP_TIMEOUT_MS = 30_000;
 
@@ -21,6 +22,7 @@ export function GameShell() {
   const startBattle = useGameStore((state) => state.startBattle);
   const selectedPieceId = useGameStore((state) => state.selectedPieceId);
   const moveSelected = useGameStore((state) => state.moveSelected);
+  const setSelectedPiece = useGameStore((state) => state.setSelectedPiece);
   const pushToast = useUIStore((state) => state.pushToast);
   const { phase, state } = snapshot;
 
@@ -61,11 +63,13 @@ export function GameShell() {
         <GameCanvas
           snapshot={snapshot}
           selectedPieceId={selectedPieceId}
+          onUnitClick={(pieceId) => {
+            if (phase !== "prep") return;
+            setSelectedPiece(selectedPieceId === pieceId ? null : pieceId);
+          }}
           onCellClick={(position) => {
             if (phase !== "prep" || !selectedPieceId) return;
-            if (moveSelected(position)) {
-              pushToast(`棋子已落位 (${position.x}, ${position.y})`, "success");
-            }
+            moveSelected(position);
           }}
         />
       </div>
@@ -75,6 +79,7 @@ export function GameShell() {
       <ShopStrip />
       <BattleOverlay />
       <SettlementOverlay />
+      <UnitInspectOverlay />
 
       <LetterDrawer />
       <SettingsMenu />

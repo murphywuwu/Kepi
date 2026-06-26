@@ -8,6 +8,7 @@ import {
   NEUTRAL_ROWS,
   zoneRowBounds,
 } from "@/lib/game/boardLayout";
+import type { BoardPosition } from "@/types";
 import type { CanvasRenderState, CanvasTheme } from "./types";
 
 export function renderBoardLayer(
@@ -21,52 +22,133 @@ export function renderBoardLayer(
   if (showZones) {
     drawZoneBand(ctx, metrics, ENEMY_ROWS, "rgba(193, 18, 31, 0.07)", theme.enemyStroke);
     drawZoneBand(ctx, metrics, NEUTRAL_ROWS, "rgba(245, 234, 214, 0.04)", "rgba(107, 91, 79, 0.25)");
-    drawZoneBand(ctx, metrics, ALLY_ROWS, "rgba(74, 111, 165, 0.08)", theme.allyStroke);
+    drawZoneBand(ctx, metrics, ALLY_ROWS, "rgba(74, 111, 165, 0.14)", theme.allyStroke);
     drawZoneDivider(ctx, metrics, NEUTRAL_ROWS[0]!);
     drawZoneLabel(ctx, metrics, ENEMY_ROWS[0]!, "敌阵", theme.enemyStroke);
     drawZoneLabel(ctx, metrics, ALLY_ROWS[0]!, "我阵", theme.allyStroke);
   }
 
   if (showZones) {
-    for (const cell of allEnemyCells()) {
-      const { x, y } = boardToPixel(cell, metrics);
-      const r = metrics.cellSize * 0.34;
-      ctx.fillStyle = "rgba(193,18,31,0.05)";
-      ctx.strokeStyle = theme.enemyStroke;
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = state.enemies.length > 0 ? 0.14 : 0.1;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    for (const cell of allAllyCells()) {
-      const { x, y } = boardToPixel(cell, metrics);
-      const r = metrics.cellSize * 0.34;
-      ctx.fillStyle = theme.boardCell;
-      ctx.strokeStyle = theme.allyStroke;
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 0.1;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
+    drawEnemyPlacementSlots(ctx, state, theme);
+    drawAllyPlacementSlots(ctx, state, theme);
   }
 
-  if (state.allyCellsHighlighted) {
-    ctx.fillStyle = theme.boardCellActive;
-    ctx.globalAlpha = 0.35;
-    for (const cell of allAllyCells()) {
-      const { x, y } = boardToPixel(cell, metrics);
-      ctx.beginPath();
-      ctx.arc(x, y, metrics.cellSize * 0.38, 0, Math.PI * 2);
-      ctx.fill();
-    }
+  if (state.phase === "prep" && state.hoveredAllyCell) {
+    drawHoveredAllyCell(ctx, state.hoveredAllyCell, state, theme);
   }
 
   ctx.globalAlpha = 1;
+}
+
+function occupiedAllyCells(allies: CanvasRenderState["allies"]): Set<string> {
+  const set = new Set<string>();
+  for (const piece of allies) {
+    if (piece.position) {
+      set.add(`${piece.position.x},${piece.position.y}`);
+    }
+  }
+  return set;
+}
+
+function isHoveredCell(
+  cell: BoardPosition,
+  hovered: BoardPosition | null,
+): boolean {
+  return hovered?.x === cell.x && hovered?.y === cell.y;
+}
+
+function drawEnemyPlacementSlots(
+  ctx: CanvasRenderingContext2D,
+  state: CanvasRenderState,
+  theme: CanvasTheme,
+): void {
+  if (state.selectedPieceId) return;
+
+  const { metrics } = state;
+  for (const cell of allEnemyCells()) {
+    const { x, y } = boardToPixel(cell, metrics);
+    const r = metrics.cellSize * 0.34;
+    ctx.save();
+    ctx.fillStyle = "rgba(193,18,31,0.05)";
+    ctx.strokeStyle = theme.enemyStroke;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = state.enemies.length > 0 ? 0.14 : 0.1;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawAllyPlacementSlots(
+  ctx: CanvasRenderingContext2D,
+  state: CanvasRenderState,
+  theme: CanvasTheme,
+): void {
+  const { metrics, hoveredAllyCell, selectedPieceId } = state;
+  const occupied = occupiedAllyCells(state.allies);
+  const placing = Boolean(selectedPieceId);
+
+  for (const cell of allAllyCells()) {
+    if (isHoveredCell(cell, hoveredAllyCell)) continue;
+
+    const { x, y } = boardToPixel(cell, metrics);
+    const isOccupied = occupied.has(`${cell.x},${cell.y}`);
+    const r = metrics.cellSize * 0.36;
+
+    ctx.save();
+
+    ctx.fillStyle = "rgba(74, 111, 165, 0.16)";
+    ctx.globalAlpha = isOccupied ? 0.22 : placing ? 0.38 : 0.48;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = theme.allyStroke;
+    ctx.lineWidth = isOccupied ? 1 : 1.25;
+    ctx.globalAlpha = isOccupied ? 0.28 : placing ? 0.42 : 0.52;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = theme.allyStroke;
+    ctx.globalAlpha = isOccupied ? 0.2 : 0.34;
+    ctx.beginPath();
+    ctx.arc(x, y, metrics.cellSize * 0.055, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+function drawHoveredAllyCell(
+  ctx: CanvasRenderingContext2D,
+  cell: BoardPosition,
+  state: CanvasRenderState,
+  theme: CanvasTheme,
+): void {
+  const { metrics, timeMs } = state;
+  const pulse = 0.42 + 0.28 * Math.sin(timeMs * 0.006);
+  const { x, y } = boardToPixel(cell, metrics);
+  const r = metrics.cellSize * 0.38;
+
+  ctx.save();
+
+  ctx.fillStyle = "rgba(142, 202, 230, 0.22)";
+  ctx.globalAlpha = pulse * 0.85;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = theme.allyStroke;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = pulse;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function drawZoneBand(

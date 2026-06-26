@@ -1,4 +1,5 @@
 import type { GameAction, GameSnapshot } from "@/types";
+import { defaultAllyPosition } from "@/lib/game/boardLayout";
 import { simulateBattle } from "./battle";
 import {
   INITIAL_GOLD,
@@ -81,13 +82,17 @@ export function reduceGameState(
       return buyPopulation(snapshot);
 
     case "START_BATTLE": {
+      const board = snapshot.board.map((piece, index) =>
+        piece.position ? piece : { ...piece, position: defaultAllyPosition(index) },
+      );
       const battleResult = simulateBattle({
         stage: snapshot.state.stage,
-        allies: snapshot.board,
+        allies: board,
       });
       return transitionPhase(
         {
           ...snapshot,
+          board,
           lastBattleResult: battleResult,
           battle: null,
         },

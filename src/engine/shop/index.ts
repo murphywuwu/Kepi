@@ -50,13 +50,31 @@ export function createPiece(
 }
 
 function rollShopSlots(stage: number): PieceType[] {
-  const maxCost = Math.min(5, 1 + Math.floor((stage - 1) / 2));
+  const maxCost = Math.min(5, 2 + Math.floor((stage - 1) / 2));
   const pool = PIECE_TYPES.filter((type) => PIECE_TEMPLATES[type].cost <= maxCost);
 
-  return Array.from({ length: SHOP_SLOT_COUNT }, (_, index) => {
-    const pick = pool[(stage + index) % pool.length]!;
-    return pick;
-  });
+  const slots: PieceType[] = [];
+  const used = new Set<number>();
+
+  for (let i = 0; i < SHOP_SLOT_COUNT; i += 1) {
+    if (i < pool.length) {
+      const pick = pool[(stage + i) % pool.length]!;
+      slots.push(pick);
+      continue;
+    }
+
+    // Pool smaller than slot count: vary picks without always cloning slot 0.
+    let idx = (stage * 5 + i * 3) % pool.length;
+    let guard = 0;
+    while (used.has(idx) && guard < pool.length) {
+      idx = (idx + 1) % pool.length;
+      guard += 1;
+    }
+    used.add(idx);
+    slots.push(pool[idx]!);
+  }
+
+  return slots;
 }
 
 export function rollShop(snapshot: GameSnapshot): GameSnapshot {

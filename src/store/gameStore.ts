@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createInitialSnapshot, reduceGameState } from "@/engine";
 import { saveSnapshot } from "@/lib/storage/snapshot";
+import { useUIStore } from "@/store/uiStore";
 import type { BoardPosition, GameAction, GameSnapshot, PieceType } from "@/types";
 
 type GameStore = {
@@ -45,9 +46,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     apply(set, get, action);
   },
 
-  setSelectedPiece: (selectedPieceId) => set({ selectedPieceId }),
+  setSelectedPiece: (selectedPieceId) => {
+    useUIStore.getState().setHoveredUnit(null);
+    set({ selectedPieceId });
+  },
 
-  buyFromShop: (pieceType) => apply(set, get, { type: "BUY_PIECE", pieceType }),
+  buyFromShop: (pieceType) => {
+    const prevBoardLen = get().snapshot.board.length;
+    const ok = apply(set, get, { type: "BUY_PIECE", pieceType });
+    if (!ok) return false;
+    const board = get().snapshot.board;
+    const bought = board[board.length - 1];
+    if (board.length > prevBoardLen && bought) {
+      set({ selectedPieceId: bought.id });
+    }
+    return true;
+  },
 
   sellSelected: () => {
     const id = get().selectedPieceId;

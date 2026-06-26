@@ -16,6 +16,13 @@ export type DialogState = {
   onConfirm: (() => void) | null;
 };
 
+export type HoveredUnit = {
+  side: "ally" | "enemy";
+  unitId: string;
+  anchorX: number;
+  anchorY: number;
+};
+
 type UIStore = {
   debugOpen: boolean;
   setDebugOpen: (open: boolean) => void;
@@ -23,6 +30,8 @@ type UIStore = {
   setLetterDrawerOpen: (open: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  hoveredUnit: HoveredUnit | null;
+  setHoveredUnit: (unit: HoveredUnit | null) => void;
   toasts: ToastMessage[];
   pushToast: (message: string, variant?: ToastVariant) => void;
   dismissToast: (id: string) => void;
@@ -50,6 +59,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   settingsOpen: false,
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+
+  hoveredUnit: null,
+  setHoveredUnit: (hoveredUnit) => set({ hoveredUnit }),
 
   toasts: [],
   pushToast: (message, variant = "default") => {

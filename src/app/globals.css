@@ -11,6 +11,7 @@
   --color-kepi-ink-muted: var(--kepi-ink-muted);
   --color-kepi-accent: var(--kepi-accent);
   --color-kepi-accent-soft: var(--kepi-accent-soft);
+  --color-kepi-enemy: var(--kepi-enemy);
   --color-kepi-gold: var(--kepi-gold);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -259,6 +260,233 @@
     min-width: 4.25rem;
     min-height: 4.25rem;
     padding: 0.375rem;
+  }
+
+  /* Prep / shop — full-body character figures (not card slots) */
+  .kepi-piece-figure {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 3.75rem;
+    height: 5.75rem;
+    padding: 0 0.125rem 0.125rem;
+    border: none;
+    background: transparent;
+  }
+
+  .kepi-piece-figure-interactive {
+    cursor: pointer;
+    transition: transform 0.12s ease;
+  }
+
+  .kepi-piece-figure-interactive:hover {
+    transform: translateY(-3px);
+  }
+
+  .kepi-piece-figure-interactive:active {
+    transform: translateY(-1px) scale(0.98);
+  }
+
+  .kepi-piece-figure-ground {
+    position: absolute;
+    bottom: 0.35rem;
+    left: 50%;
+    width: 72%;
+    height: 0.35rem;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(44, 36, 22, 0.42) 0%,
+      rgba(44, 36, 22, 0) 72%
+    );
+  }
+
+  .kepi-piece-figure-select-ring {
+    position: absolute;
+    bottom: 0.15rem;
+    left: 50%;
+    width: 78%;
+    height: 0.65rem;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    border: 2px solid var(--kepi-accent);
+    box-shadow: 0 0 10px rgba(74, 111, 165, 0.55);
+  }
+
+  .kepi-piece-figure-sprite {
+    position: relative;
+    z-index: 1;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    filter: drop-shadow(0 5px 10px rgba(44, 36, 22, 0.38));
+    pointer-events: none;
+  }
+
+  .kepi-piece-figure-label {
+    position: relative;
+    z-index: 2;
+    margin-top: 0.125rem;
+    max-width: 4.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.625rem;
+    line-height: 1.2;
+    color: var(--kepi-ink);
+    text-align: center;
+  }
+
+  .kepi-piece-figure-badge {
+    position: absolute;
+    bottom: 0.875rem;
+    left: 50%;
+    z-index: 2;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    border-radius: 999px;
+    background: rgba(44, 36, 22, 0.72);
+    padding: 0.125rem 0.375rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--kepi-gold);
+    white-space: nowrap;
+  }
+
+  .kepi-piece-figure-badge-star {
+    color: #f4d03f;
+  }
+
+  .kepi-piece-figure-bench {
+    min-width: 3.25rem;
+    height: 4.75rem;
+    padding-bottom: 0;
+  }
+
+  .kepi-piece-figure-ground-bench {
+    bottom: 0.2rem;
+    width: 64%;
+    height: 0.28rem;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(245, 234, 214, 0.28) 0%,
+      rgba(245, 234, 214, 0) 72%
+    );
+  }
+
+  .kepi-piece-figure-sprite-bench-idle {
+    opacity: 0.78;
+    filter: drop-shadow(0 3px 6px rgba(44, 36, 22, 0.28))
+      saturate(0.88);
+  }
+
+  .kepi-piece-figure-sprite-bench-active {
+    opacity: 1;
+    filter: drop-shadow(0 6px 14px rgba(74, 111, 165, 0.42))
+      saturate(1.05);
+    transform: translateY(-4px);
+  }
+
+  .kepi-piece-figure-bench-selected {
+    transform: translateY(-2px);
+  }
+
+  .kepi-piece-figure-select-ring-bench {
+    bottom: 0.05rem;
+    width: 84%;
+    height: 0.55rem;
+    border-color: rgba(232, 168, 73, 0.95);
+    box-shadow:
+      0 0 12px rgba(232, 168, 73, 0.55),
+      0 0 24px rgba(74, 111, 165, 0.25);
+  }
+
+  .kepi-bench-float {
+    display: inline-flex;
+    max-width: min(100%, 40rem);
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.375rem 0.875rem 0.375rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(20, 14, 8, 0.52);
+    border: 1px solid rgba(245, 234, 214, 0.14);
+    box-shadow:
+      0 8px 28px rgba(44, 36, 22, 0.38),
+      inset 0 1px 0 rgba(245, 234, 214, 0.08);
+    backdrop-filter: blur(10px);
+  }
+
+  .kepi-bench-float-label {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.0625rem;
+    padding-right: 0.125rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: rgba(245, 234, 214, 0.82);
+    white-space: nowrap;
+  }
+
+  .kepi-bench-float-count {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+    color: var(--kepi-gold);
+  }
+
+  .kepi-bench-float-divider {
+    width: 1px;
+    align-self: stretch;
+    margin-block: 0.25rem;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(245, 234, 214, 0.22) 35%,
+      rgba(245, 234, 214, 0.22) 65%,
+      transparent
+    );
+  }
+
+  .kepi-bench-float-roster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.125rem;
+  }
+
+  .kepi-bench-float-sell {
+    flex-shrink: 0;
+  }
+
+  .kepi-bench-strip {
+    align-items: flex-end;
+    gap: 0.375rem;
+    padding-bottom: 0.125rem;
+  }
+
+  .kepi-bench-strip::before {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(92, 64, 51, 0.35) 12%,
+      rgba(92, 64, 51, 0.35) 88%,
+      transparent
+    );
   }
 
   /* Scene vignette over canvas */

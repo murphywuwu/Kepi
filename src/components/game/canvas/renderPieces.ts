@@ -1,21 +1,17 @@
+import { boardToPixel } from "@/lib/game/boardLayout";
 import {
-  boardToPixel,
-  BOARD_COLS,
-  defaultAllyPosition,
-  defaultEnemyPosition,
-  isEnemyRow,
-} from "@/lib/game/boardLayout";
+  resolveAllyBoardPosition,
+  resolveEnemyBoardPosition,
+  UNIT_FEET_OFFSET_RATIO,
+  UNIT_SPRITE_HEIGHT_RATIO,
+} from "@/lib/game/unitLayout";
 import { ENEMY_VISUALS, PIECE_VISUALS } from "@/lib/game/assets";
 import type { Enemy, Piece } from "@/types";
 import { loadCachedImage, type ImageCache } from "@/lib/game/imageCache";
 import type { CanvasRenderState, CanvasTheme } from "./types";
 
-/** Full-body sprite height relative to cell size (1024×1280 portraits). */
-const SPRITE_HEIGHT_RATIO = 2.2;
-/** Feet anchor slightly below cell center so units stand on the courtyard floor. */
-const FEET_OFFSET_RATIO = 0.2;
-
 type UnitDrawJob = {
+  id: string;
   x: number;
   y: number;
   sortY: number;
@@ -24,6 +20,7 @@ type UnitDrawJob = {
   portrait: string;
   placeholder: string;
   selected: boolean;
+  hovered: boolean;
   hpRatio: number;
   showHpBar: boolean;
   preview: boolean;
@@ -102,6 +99,23 @@ function drawPreviewRing(
   ctx.restore();
 }
 
+function drawHoverRing(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  feetY: number,
+  cellSize: number,
+  stroke: string,
+): void {
+  ctx.save();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  ctx.ellipse(x, feetY, cellSize * 0.4, cellSize * 0.14, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawHpBar(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -167,16 +181,21 @@ function drawUnit(
     portrait,
     placeholder,
     selected,
+    hovered,
     hpRatio,
     showHpBar,
     preview,
   } = job;
-  const spriteHeight = cellSize * SPRITE_HEIGHT_RATIO;
-  const feetY = y + cellSize * FEET_OFFSET_RATIO;
+  const spriteHeight = cellSize * UNIT_SPRITE_HEIGHT_RATIO;
+  const feetY = y + cellSize * UNIT_FEET_OFFSET_RATIO;
 
   drawFootShadow(ctx, x, feetY, cellSize, preview ? 0.18 : 0.28);
   if (preview) {
     drawPreviewRing(ctx, x, feetY, cellSize, stroke);
+  }
+  if (hovered) {
+    drawFootGlow(ctx, x, feetY, cellSize, stroke, 0.62);
+    drawHoverRing(ctx, x, feetY, cellSize, stroke);
   } else if (selected) {
     drawFootGlow(ctx, x, feetY, cellSize, stroke);
   }
@@ -212,18 +231,6 @@ function drawUnit(
   ctx.restore();
 }
 
-function allyPosition(piece: Piece, index: number) {
-  return piece.position ?? defaultAllyPosition(index);
-}
-
-function enemyPosition(enemy: Enemy, index: number, total: number) {
-  const pos = enemy.position;
-  if (pos && isEnemyRow(pos.y) && pos.x >= 0 && pos.x < BOARD_COLS) {
-    return pos;
-  }
-  return defaultEnemyPosition(index, total);
-}
-
 export function renderUnitsLayer(
   ctx: CanvasRenderingContext2D,
   state: CanvasRenderState,
@@ -234,12 +241,19 @@ export function renderUnitsLayer(
 
   const showHpBar = state.phase === "battle" || state.phase === "settlement";
   const enemyPreview = state.phase === "prep";
+  const hovered = state.hoveredUnit;
 
   state.allies.forEach((piece, index) => {
-    const pos = allyPosition(piece, index);
+    if (state.phase === "prep" && piece.position === null) return;
+    if ((state.phase === "battle" || state.phase === "settlement") && piece.hp <= 0) {
+      return;
+    }
+
+    const pos = resolveAllyBoardPosition(piece, index);
     const { x, y } = boardToPixel(pos, state.metrics);
     const meta = PIECE_VISUALS[piece.type];
     jobs.push({
+      id: piece.id,
       x,
       y,
       sortY: y,
@@ -248,6 +262,10 @@ export function renderUnitsLayer(
       portrait: meta.portrait,
       placeholder: meta.placeholder,
       selected: state.selectedPieceId === piece.id,
+      hovered:
+        hovered?.side === "ally" &&
+        hovered.unitId === piece.id &&
+        !(state.phase === "prep" && state.selectedPieceId),
       hpRatio: piece.hp / piece.maxHp,
       showHpBar,
       preview: false,
@@ -255,10 +273,15 @@ export function renderUnitsLayer(
   });
 
   state.enemies.forEach((enemy, index) => {
-    const pos = enemyPosition(enemy, index, state.enemies.length);
+    if ((state.phase === "battle" || state.phase === "settlement") && enemy.hp <= 0) {
+      return;
+    }
+
+    const pos = resolveEnemyBoardPosition(enemy, index, state.enemies.length);
     const { x, y } = boardToPixel(pos, state.metrics);
     const meta = ENEMY_VISUALS[enemy.type];
     jobs.push({
+      id: enemy.id,
       x,
       y,
       sortY: y,
@@ -267,6 +290,7 @@ export function renderUnitsLayer(
       portrait: meta.portrait,
       placeholder: meta.placeholder,
       selected: false,
+      hovered: hovered?.side === "enemy" && hovered.unitId === enemy.id,
       hpRatio: enemy.hp / enemy.maxHp,
       showHpBar: showHpBar && !enemyPreview,
       preview: enemyPreview,
@@ -278,4 +302,45 @@ export function renderUnitsLayer(
   for (const job of jobs) {
     drawUnit(ctx, job, cellSize, state.portraitCache, state.requestRepaint);
   }
+
+  renderPlacementGhost(ctx, state, theme);
+}
+
+function renderPlacementGhost(
+  ctx: CanvasRenderingContext2D,
+  state: CanvasRenderState,
+  theme: CanvasTheme,
+): void {
+  if (state.phase !== "prep" || !state.selectedPieceId || !state.hoveredAllyCell) {
+    return;
+  }
+
+  const piece = state.allies.find((entry) => entry.id === state.selectedPieceId);
+  if (!piece) return;
+
+  const { x, y } = boardToPixel(state.hoveredAllyCell, state.metrics);
+  const meta = PIECE_VISUALS[piece.type];
+  const { cellSize } = state.metrics;
+
+  drawUnit(
+    ctx,
+    {
+      id: "placement-ghost",
+      x,
+      y,
+      sortY: y,
+      label: meta.shortLabel,
+      stroke: theme.allyStroke,
+      portrait: meta.portrait,
+      placeholder: meta.placeholder,
+      selected: false,
+      hovered: false,
+      hpRatio: 1,
+      showHpBar: false,
+      preview: true,
+    },
+    cellSize,
+    state.portraitCache,
+    state.requestRepaint,
+  );
 }
