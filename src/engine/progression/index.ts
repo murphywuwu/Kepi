@@ -38,9 +38,10 @@ export function settleStage(
 }
 
 export function resolveProgression(snapshot: GameSnapshot): GameSnapshot {
-  const { state } = snapshot;
+  const { state, lastBattleResult } = snapshot;
+  const won = lastBattleResult?.won ?? false;
 
-  if (state.survival <= 0) {
+  if (!won && state.survival <= 0) {
     return {
       ...snapshot,
       phase: "ending",
@@ -48,12 +49,23 @@ export function resolveProgression(snapshot: GameSnapshot): GameSnapshot {
     };
   }
 
-  if (state.stage >= state.totalStages) {
-    const won = state.kebi >= state.kebiThreshold;
+  if (won && state.stage >= state.totalStages) {
+    const endingWon = state.kebi >= state.kebiThreshold;
     return {
       ...snapshot,
       phase: "ending",
-      state: { ...state, result: won ? "win" : "lose" },
+      state: { ...state, result: endingWon ? "win" : "lose" },
+    };
+  }
+
+  if (won) {
+    return {
+      ...snapshot,
+      state: {
+        ...state,
+        stage: state.stage + 1,
+        result: state.result ?? "playing",
+      },
     };
   }
 
@@ -61,7 +73,6 @@ export function resolveProgression(snapshot: GameSnapshot): GameSnapshot {
     ...snapshot,
     state: {
       ...state,
-      stage: state.stage + 1,
       result: state.result ?? "playing",
     },
   };

@@ -76,7 +76,7 @@ export function SettlementOverlay() {
           {won
             ? "客批 +1，桑梓值与家园修复推进"
             : state.survival > 0
-              ? "存续度 -1"
+              ? "存续度 -1，仍在本关，调整阵容后再战"
               : "存续度归零"}
         </p>
 
@@ -98,7 +98,13 @@ export function SettlementOverlay() {
           className="mt-5 w-full py-2.5 text-sm font-bold"
           onClick={() => advanceStage()}
         >
-          {state.stage >= state.totalStages ? "查看结局" : "进入下一关"}
+          {state.survival <= 0
+            ? "查看结局"
+            : won
+              ? state.stage >= state.totalStages
+                ? "查看结局"
+                : "进入下一关"
+              : "重整再战"}
         </WoodButton>
       </WoodPanel>
     </div>

@@ -1,10 +1,28 @@
 import { describe, expect, it } from "vitest";
+import type { BattleResult, GameSnapshot } from "@/types";
 import {
   createInitialSnapshot,
   reduceGameState,
   resetPieceCounter,
   ENGINE_VERSION,
 } from "./index";
+
+function finishBattle(snapshot: GameSnapshot, won: boolean): GameSnapshot {
+  const result: BattleResult = {
+    won,
+    tick: 10,
+    elapsedMs: 1000,
+    events: [{ type: "roundEnd" }],
+    alliesRemaining: won ? 1 : 0,
+    enemiesRemaining: won ? 0 : 2,
+    allyHpPercent: won ? 80 : 0,
+    enemyHpPercent: won ? 0 : 60,
+  };
+  return reduceGameState(
+    { ...snapshot, phase: "battle", lastBattleResult: result },
+    { type: "END_BATTLE" },
+  );
+}
 
 describe("engine", () => {
   it("exports snapshot version", () => {
@@ -22,12 +40,42 @@ describe("engine", () => {
     expect(snapshot.phase).toBe("battle");
     expect(snapshot.lastBattleResult).not.toBeNull();
 
-    snapshot = reduceGameState(snapshot, { type: "END_BATTLE" });
+    snapshot = finishBattle(snapshot, true);
     expect(snapshot.phase).toBe("settlement");
 
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
     expect(snapshot.phase).toBe("prep");
     expect(snapshot.state.stage).toBe(2);
+  });
+
+  it("retries same stage on loss without round income", () => {
+    resetPieceCounter(0);
+    let snapshot = createInitialSnapshot();
+    const goldBefore = snapshot.state.gold;
+
+    snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
+    expect(snapshot.lastBattleResult?.won).toBe(false);
+    snapshot = reduceGameState(snapshot, { type: "END_BATTLE" });
+    expect(snapshot.state.survival).toBe(1);
+
+    snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
+    expect(snapshot.phase).toBe("prep");
+    expect(snapshot.state.stage).toBe(1);
+    expect(snapshot.state.gold).toBe(goldBefore);
+  });
+
+  it("advances stage and pays round income on win", () => {
+    resetPieceCounter(0);
+    let snapshot = createInitialSnapshot();
+    snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
+    const goldAfterBuy = snapshot.state.gold;
+
+    snapshot = finishBattle(snapshot, true);
+    snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
+
+    expect(snapshot.phase).toBe("prep");
+    expect(snapshot.state.stage).toBe(2);
+    expect(snapshot.state.gold).toBeGreaterThan(goldAfterBuy);
   });
 
   it("recalls placed pieces to bench when advancing to next prep", () => {
@@ -43,7 +91,7 @@ describe("engine", () => {
     expect(snapshot.board[0]?.position).toEqual({ x: 3, y: 4 });
 
     snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
-    snapshot = reduceGameState(snapshot, { type: "END_BATTLE" });
+    snapshot = finishBattle(snapshot, true);
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
 
     expect(snapshot.phase).toBe("prep");

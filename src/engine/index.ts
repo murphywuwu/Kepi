@@ -110,11 +110,14 @@ export function reduceGameState(
     }
 
     case "ADVANCE_STAGE": {
+      const won = snapshot.lastBattleResult?.won ?? false;
       let next = resolveProgression(snapshot);
       if (next.phase === "ending") {
         return next;
       }
-      next = applyRoundIncome(next);
+      if (won) {
+        next = applyRoundIncome(next);
+      }
       next = rollShop(next);
       next = recallBoardToBench(next);
       return transitionPhase(next, "prep");
