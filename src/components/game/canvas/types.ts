@@ -1,4 +1,4 @@
-import type { BattleEvent, BoardPosition, Enemy, Piece, ScenePhase } from "@/types";
+import type { BattleEvent, BoardPosition, Enemy, HomeRepairTier, Piece, ScenePhase } from "@/types";
 import type { BoardMetrics } from "@/lib/game/boardLayout";
 import type { TulouVisualStage } from "@/lib/game/assets";
 import type { ImageCache } from "@/lib/game/imageCache";
@@ -23,8 +23,12 @@ export type CanvasHoverTarget = Pick<HoveredUnit, "side" | "unitId">;
 export type CanvasRenderState = {
   metrics: BoardMetrics;
   phase: ScenePhase;
+  stage: number;
   tulouStage: TulouVisualStage;
   homeRepair: number;
+  homeRepairTier: HomeRepairTier;
+  tulouShieldHp: Record<string, number>;
+  tulouCheatDeathAvailable: string[];
   allies: Piece[];
   enemies: Enemy[];
   hoveredAllyCell: BoardPosition | null;
@@ -41,6 +45,8 @@ export type CanvasRenderState = {
   hoveredUnit: CanvasHoverTarget | null;
   imageCache: ImageCache;
   portraitCache: ImageCache;
+  waterGuestCrisisLevel: 0 | 1 | 2;
+  waterGuestDeathFlash: number;
   requestRepaint?: () => void;
 };
 

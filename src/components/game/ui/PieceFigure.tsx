@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { PIECE_VISUALS } from "@/lib/game/assets";
 import { cn } from "@/lib/utils";
@@ -56,16 +55,17 @@ export function PieceFigure({
           aria-hidden
         />
       ) : null}
-      <Image
+      {/* Native img — same URL as canvas; avoids stale /_next/image optimizer cache */}
+      <img
         src={visual.portrait}
         alt={visual.label}
-        width={Math.round(height * 0.58)}
         height={height}
         className={cn(
           "kepi-piece-figure-sprite",
           isBench && !selected && "kepi-piece-figure-sprite-bench-idle",
           isBench && selected && "kepi-piece-figure-sprite-bench-active",
         )}
+        style={{ height, width: "auto" }}
         draggable={false}
       />
       {badge}

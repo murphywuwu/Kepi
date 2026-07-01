@@ -1,4 +1,4 @@
-import type { EnemyType, PieceType, RangeType, SupportType } from "@/types";
+import type { EnemyType, PieceType, RangeType } from "@/types";
 
 /** Static definition for a combat piece (shop / board). */
 export type PieceDefinition = {
@@ -17,20 +17,7 @@ export type PieceDefinition = {
   portrait: string;
 };
 
-/** Static definition for a support unit (后勤位). */
-export type SupportDefinition = {
-  type: SupportType;
-  name: string;
-  costTier: number;
-  hp: number;
-  atk: number;
-  atkSpeed: number;
-  armor: number;
-  range: RangeType | null;
-  description: string;
-  assetId: string;
-  portrait: string;
-};
+export type EnemyRole = "tank" | "warrior" | "control" | "dps" | "ranged" | "assassin";
 
 /** Static definition for an enemy archetype. */
 export type EnemyDefinition = {
@@ -43,6 +30,7 @@ export type EnemyDefinition = {
   atkSpeed: number;
   armor: number;
   range: RangeType;
+  role: EnemyRole;
   historicalNote: string;
   description: string;
 };

@@ -1,4 +1,5 @@
 import type { GameAction, GameSnapshot } from "@/types";
+import { BALANCE } from "@/data";
 import { defaultAllyPosition } from "@/lib/game/boardLayout";
 import {
   advanceBattleTick,
@@ -10,7 +11,7 @@ import {
   INITIAL_POPULATION,
   SNAPSHOT_VERSION,
 } from "./constants";
-import { applyRoundIncome } from "./economy";
+import { applyRoundIncome, pawnKebi } from "./economy";
 import {
   applyHomeRepairFromSettlement,
   resolveProgression,
@@ -33,29 +34,12 @@ export function createInitialSnapshot(): GameSnapshot {
   const base: GameSnapshot = {
     version: SNAPSHOT_VERSION,
     phase: "prep",
-    state: {
-      stage: 1,
-      totalStages: 6,
-      survival: 2,
-      kebi: 0,
-      kebiThreshold: 5,
-      sangzi: 0,
-      homeRepair: 0,
-      gold: INITIAL_GOLD,
-      population: INITIAL_POPULATION,
-      winStreak: 0,
-      loseStreak: 0,
-      result: null,
-    },
+    state: { ...BALANCE.initial },
     board: [],
     shop: {
       slots: [],
-      refreshCost: 2,
+      refreshCost: BALANCE.economy.shopRefreshCost,
     },
-    support: [
-      { type: "shuike", slot: "shuike" },
-      { type: "xiangxian", slot: "xiangxian" },
-    ],
     battle: null,
     lastBattleResult: null,
     settlement: null,
@@ -91,6 +75,9 @@ export function reduceGameState(
     case "BUY_POPULATION":
       return buyPopulation(snapshot);
 
+    case "PAWN_KEBI":
+      return pawnKebi(snapshot);
+
     case "START_BATTLE": {
       const board = snapshot.board.map((piece, index) =>
         piece.position ? piece : { ...piece, position: defaultAllyPosition(index) },
@@ -98,6 +85,7 @@ export function reduceGameState(
       const battle = createBattleSnapshot({
         stage: snapshot.state.stage,
         allies: board,
+        homeRepairTier: snapshot.state.homeRepairTier,
       });
       return transitionPhase(
         {
@@ -150,7 +138,13 @@ export function reduceGameState(
       next = rollShop(next);
       next = recallBoardToBench(next);
       return transitionPhase(
-        { ...next, battle: null, lastBattleResult: null, settlement: null },
+        {
+          ...next,
+          battle: null,
+          lastBattleResult: null,
+          settlement: null,
+          state: { ...next.state, roundPawnCount: 0 },
+        },
         "prep",
       );
     }
@@ -162,16 +156,21 @@ export function reduceGameState(
 
 export {
   advanceBattleTick,
+  applyAssassinLeap,
   calcDamage,
   createBattleSnapshot,
+  enemyTypesForStage,
+  hakkaAtkMultiplier,
   simulateBattle,
   spawnEnemiesForStage,
   syncBoardFromBattle,
 } from "./battle";
-export { calcInterest, calcStreakBonus, applyRoundIncome } from "./economy";
+export { applyRoundIncome, pawnKebi } from "./economy";
 export {
   applyHomeRepairFromSettlement,
+  gameResultFromEndingType,
   homeRepairStage,
+  resolveEndingType,
   resolveProgression,
   settleStage,
 } from "./progression";
@@ -179,11 +178,13 @@ export {
   buyPiece,
   buyPopulation,
   createPiece,
+  mergeMatchingOneStars,
   movePiece,
   refreshShop,
   rollShop,
   recallBoardToBench,
   resetPieceCounter,
   sellPiece,
+  sellRefund,
 } from "./shop";
 export { canApplyAction, cloneSnapshot, transitionPhase } from "./stateMachine";

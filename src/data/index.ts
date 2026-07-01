@@ -2,8 +2,8 @@ export { ASSET_MANIFEST, ENEMY_ASSET_ID_MAP } from "./assets";
 export {
   BALANCE,
   TULOU_VISUAL_STAGES,
+  homeRepairTierFromRepair,
   homeRepairVisualStage,
-  streakBonus,
   tulouStageForRepair,
 } from "./balance";
 export {
@@ -16,15 +16,19 @@ export {
   ARCHIVAL_LETTERS,
   DIGITAL_LETTER_FALLBACKS,
   ENDING_ASSETS,
+  ENDING_SCENE_COPY,
   ENDING_SUBTITLES,
   LETTERS,
   MUSEUM_LETTERS,
   archivalLetterById,
+  buildEndingBattleSummary,
+  endingLetterCount,
+  endingSubtitle,
   pickDigitalLetterFallback,
   toAILetterResponse,
 } from "./letters";
-export type { MuseumLetter } from "./letters";
-export { PIECE_TYPES, PIECES, SUPPORT_UNITS, piecePortrait } from "./pieces";
+export type { EndingNarrativeContext, MuseumLetter } from "./letters";
+export { PIECE_TYPES, PIECES, piecePortrait } from "./pieces";
 export {
   STAGES,
   enemyCount,
@@ -37,6 +41,5 @@ export type {
   EnemyDefinition,
   PieceDefinition,
   StageDefinition,
-  SupportDefinition,
   TulouVisualStage,
 } from "./types";

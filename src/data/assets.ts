@@ -118,6 +118,7 @@ export const ASSET_MANIFEST = {
     starUp: "/images/effects/kepi_effect-star-up.png",
     shopRefresh: "/images/effects/kepi_effect-shop-refresh.png",
     letterPickup: "/images/effects/kepi_effect-shuike-letter-pickup.png",
+    pawnBurn: "/images/effects/kepi_effect-forgotten-attack.png",
   },
 
   audio: {
@@ -127,6 +128,14 @@ export const ASSET_MANIFEST = {
     sfxStarUp: "/audio/sfx/kepi_star-up.mp3",
     sfxCollectLetter: "/audio/sfx/kepi_collect-letter.mp3",
     sfxRepairHome: "/audio/sfx/kepi_repair-home.mp3",
+    /** 33% 水井出水 */
+    sfxWellWater: "/audio/sfx/kepi_collect-letter.mp3",
+    /** 66% 砌墙 */
+    sfxWallRepair: "/audio/sfx/kepi_repair-home.mp3",
+    /** 99% 祠堂灯火 / 山歌片段 */
+    sfxLanternGlow: "/audio/sfx/kepi_win.mp3",
+    sfxPawnStamp: "/audio/sfx/kepi_refresh.mp3",
+    sfxPawnGold: "/audio/sfx/kepi_buy.mp3",
     sfxWin: "/audio/sfx/kepi_win.mp3",
     sfxLose: "/audio/sfx/kepi_lose.mp3",
     sfxEndingWave: "/audio/sfx/kepi_ending-wave.mp3",

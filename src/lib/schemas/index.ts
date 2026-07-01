@@ -2,28 +2,38 @@ export {
   aiLetterResponseSchema,
   aiPromptInputSchema,
   aiRequestSchema,
+  turnNarrativeInputSchema,
+  turnNarrativeSchema,
   type AILetterResponseParsed,
   type AIPromptInputParsed,
+  type TurnNarrativeInputParsed,
+  type TurnNarrativeParsed,
 } from "./ai";
+
 export {
-  battleEventSchema,
-  battleResultSchema,
-  enemySchema,
-  gameSnapshotSchema,
-  gameStateSchema,
-  pieceSchema,
-  pieceTypeSchema,
-  shopStateSchema,
-  supportUnitSchema,
-  type GameSnapshotInput,
-} from "./game";
-export { settingsSchema, type Settings } from "./settings";
-export {
-  archivalLetterSchema,
   balanceSchema,
+  archivalLetterSchema,
   digitalLetterFallbackSchema,
   enemyDefinitionSchema,
   pieceDefinitionSchema,
   stageDefinitionSchema,
-  supportDefinitionSchema,
 } from "./gameData";
+
+export {
+  battleEventSchema,
+  battleResultSchema,
+  enemySchema,
+  enemyTypeSchema,
+  gameResultSchema,
+  gameSnapshotSchema,
+  gameStateSchema,
+  pieceSchema,
+  pieceTypeSchema,
+  rangeTypeSchema,
+  scenePhaseSchema,
+  settlementSummarySchema,
+  shopStateSchema,
+  type GameSnapshotInput,
+} from "./game";
+
+export { settingsSchema, type Settings } from "./settings";

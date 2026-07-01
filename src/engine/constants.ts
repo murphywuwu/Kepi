@@ -9,7 +9,6 @@ import {
   PIECES,
   enemyCount,
   stageScalingFactor,
-  streakBonus as dataStreakBonus,
 } from "@/data";
 
 export const SNAPSHOT_VERSION = BALANCE.snapshotVersion;
@@ -18,16 +17,18 @@ export const INITIAL_GOLD = BALANCE.initial.gold;
 export const INITIAL_POPULATION = BALANCE.initial.population;
 export const MAX_POPULATION = BALANCE.population.max;
 export const POPULATION_UPGRADE_COST = BALANCE.population.upgradeCost;
+export const MAX_STAR = 2 as const;
+export const STAR_HP_ATK_MULTIPLIER = BALANCE.progression.starHpAtkMultiplier;
 
 export const SHOP_SLOT_COUNT = BALANCE.economy.shopSlotCount;
 export const SHOP_REFRESH_COST = BALANCE.economy.shopRefreshCost;
 
 export const ROUND_WAGE = BALANCE.economy.roundWage;
-export const INTEREST_PER_TEN_GOLD = BALANCE.economy.interestPerTenGold;
-export const MAX_INTEREST = BALANCE.economy.maxInterest;
+export const PAWN_KEBI_GOLD = BALANCE.economy.pawnGold;
 
 export const SANGZI_PER_WIN = BALANCE.progression.sangziPerWin;
 export const HOME_REPAIR_PER_WIN = BALANCE.progression.homeRepairPerWin;
+export const XIANGXIAN_REPAIR_BONUS = BALANCE.progression.xiangxianRepairBonus;
 
 export const BATTLE_TICK_MS = BALANCE.battle.tickMs;
 export const BATTLE_MAX_MS = BALANCE.battle.maxMs;
@@ -68,8 +69,4 @@ export function stageScaling(stage: number): number {
 
 export function enemyCountForStage(stage: number): number {
   return enemyCount(stage);
-}
-
-export function streakBonus(winStreak: number, loseStreak: number): number {
-  return dataStreakBonus(winStreak, loseStreak);
 }

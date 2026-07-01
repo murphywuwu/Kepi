@@ -1,9 +1,9 @@
-import type { PieceType, SupportType } from "@/types";
-import type { PieceDefinition, SupportDefinition } from "./types";
+import type { PieceStar, PieceType } from "@/types";
+import type { PieceDefinition } from "./types";
 
 const CHARACTER_BASE = "/images/characters";
 
-/** Combat piece static definitions — PRD §6.3 (1-star base stats). */
+/** Combat + logistics piece static definitions — PRD V2.0 §5.1–5.2 (1-star base stats). */
 export const PIECES: Record<PieceType, PieceDefinition> = {
   farmer: {
     type: "farmer",
@@ -16,7 +16,7 @@ export const PIECES: Record<PieceType, PieceDefinition> = {
     range: "melee",
     clan: "hakka",
     skillId: "farmer_gold",
-    description: "每 2 回合产 1 金币，廉价经济位。",
+    description: "廉价前排，人海战术。",
     assetId: "farmer",
     portrait: `${CHARACTER_BASE}/kepi_farmer.png`,
   },
@@ -31,7 +31,7 @@ export const PIECES: Record<PieceType, PieceDefinition> = {
     range: "melee",
     clan: "hakka",
     skillId: "guard_taunt",
-    description: "前排坦克，高护甲扛伤。",
+    description: "肉盾，水客贴身保镖。",
     assetId: "guard",
     portrait: `${CHARACTER_BASE}/kepi_guard.png`,
   },
@@ -61,7 +61,7 @@ export const PIECES: Record<PieceType, PieceDefinition> = {
     range: "ranged",
     clan: "hakka",
     skillId: "fengshui_buff",
-    description: "预知下波敌人；随机使 1 友方攻击 +20% 一回合。",
+    description: "主力远程输出。",
     assetId: "fengshui",
     portrait: `${CHARACTER_BASE}/kepi_fengshui.png`,
   },
@@ -80,33 +80,33 @@ export const PIECES: Record<PieceType, PieceDefinition> = {
     assetId: "patriarch",
     portrait: `${CHARACTER_BASE}/kepi_patriarch.png`,
   },
-} as const;
-
-/** Support units fixed at game start — PRD §5.1.3A. */
-export const SUPPORT_UNITS: Record<SupportType, SupportDefinition> = {
   shuike: {
     type: "shuike",
     name: "水客",
-    costTier: 2.5,
-    hp: 500,
+    cost: 1,
+    hp: 400,
     atk: 0,
     atkSpeed: 0,
     armor: 5,
-    range: null,
-    description: "纯运信收信：每场胜利客批 +1，信里桑梓值随信收回。",
+    range: "melee",
+    clan: "logistics",
+    skillId: "shuike_letter",
+    description: "0 攻击，客批唯一来源；须上场并存活才能收信。",
     assetId: "shuike",
     portrait: `${CHARACTER_BASE}/kepi_shuike.png`,
   },
   xiangxian: {
     type: "xiangxian",
     name: "乡贤",
-    costTier: 3.5,
+    cost: 2,
     hp: 600,
     atk: 25,
     atkSpeed: 0.6,
     armor: 10,
-    range: "mid",
-    description: "消耗桑梓值修家园，驱动土楼三阶段视觉。",
+    range: "ranged",
+    clan: "logistics",
+    skillId: "xiangxian_repair",
+    description: "低攻击远程；在场时桑梓→修复转化率 +50%。",
     assetId: "xiangxian",
     portrait: `${CHARACTER_BASE}/kepi_xiangxian.png`,
   },
@@ -114,8 +114,11 @@ export const SUPPORT_UNITS: Record<SupportType, SupportDefinition> = {
 
 export const PIECE_TYPES = Object.keys(PIECES) as PieceType[];
 
-export function piecePortrait(type: PieceType, star: 1 | 2 | 3 = 1): string {
+export function piecePortrait(type: PieceType, star: PieceStar = 1): string {
   const def = PIECES[type];
+  if (type === "shuike" || type === "xiangxian") {
+    return def.portrait;
+  }
   if (star === 1) return def.portrait;
   return `${CHARACTER_BASE}/kepi_${def.assetId}_star${star}.png`;
 }

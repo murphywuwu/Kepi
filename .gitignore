@@ -59,3 +59,4 @@ __pycache__/
 
 # generated assets (keep source scripts, ignore generated outputs)
 scripts/__pycache__/
+output

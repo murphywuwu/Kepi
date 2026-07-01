@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { loadSnapshot } from "@/lib/storage/snapshot";
+import { loadSnapshot, hasSavedSnapshot } from "@/lib/storage/snapshot";
+import { initBgm } from "@/lib/audio/bgm";
+import { loadSettings } from "@/lib/storage/settings";
 import { useGameStore } from "@/store/gameStore";
 import { useUIStore } from "@/store/uiStore";
 import { BattleOverlay, SettlementOverlay } from "./PhaseOverlays";
+import { BattleHud } from "./BattleHud";
 import { EndingPhase } from "./EndingPhase";
 import { GameCanvas } from "./GameCanvas";
 import { GameDialogs } from "./GameDialogs";
@@ -30,9 +33,19 @@ export function GameShell() {
   const { phase, state } = snapshot;
 
   useEffect(() => {
+    const settings = loadSettings();
+    initBgm(settings.volume * 0.55);
+
+    if (!hasSavedSnapshot()) return;
+
     const saved = loadSnapshot();
-    if (saved) replaceSnapshot(saved);
-  }, [replaceSnapshot]);
+    if (saved) {
+      replaceSnapshot(saved);
+      return;
+    }
+
+    pushToast("存档已过期或损坏，已为你开启新局", "default");
+  }, [replaceSnapshot, pushToast]);
 
   useEffect(() => {
     setDomPieceInspect(null);
@@ -82,6 +95,7 @@ export function GameShell() {
       </div>
 
       <HudBar />
+      <BattleHud />
       <BenchStrip />
       <BottomDock />
       <BattleOverlay />

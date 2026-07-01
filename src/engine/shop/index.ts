@@ -1,10 +1,12 @@
-import type { GameSnapshot, Piece, PieceType } from "@/types";
+import type { GameSnapshot, Piece, PieceStar, PieceType } from "@/types";
 import {
   MAX_POPULATION,
+  MAX_STAR,
   PIECE_TEMPLATES,
   POPULATION_UPGRADE_COST,
   SHOP_REFRESH_COST,
   SHOP_SLOT_COUNT,
+  STAR_HP_ATK_MULTIPLIER,
 } from "../constants";
 
 const PIECE_TYPES = Object.keys(PIECE_TEMPLATES) as PieceType[];
@@ -20,15 +22,19 @@ function nextPieceId(type: PieceType): string {
   return `${type}_${pieceCounter}`;
 }
 
-function scaleStat(base: number, star: Piece["star"]): number {
-  return base * 2 ** (star - 1);
+function scaleStat(base: number, star: PieceStar): number {
+  return base * STAR_HP_ATK_MULTIPLIER ** (star - 1);
 }
 
 export function createPiece(
   type: PieceType,
-  star: Piece["star"] = 1,
+  star: PieceStar = 1,
   id?: string,
 ): Piece {
+  if (star < 1 || star > MAX_STAR) {
+    throw new Error(`Invalid star level: ${star}`);
+  }
+
   const template = PIECE_TEMPLATES[type];
   const hp = scaleStat(template.hp, star);
   const atk = scaleStat(template.atk, star);
@@ -63,7 +69,6 @@ function rollShopSlots(stage: number): PieceType[] {
       continue;
     }
 
-    // Pool smaller than slot count: vary picks without always cloning slot 0.
     let idx = (stage * 5 + i * 3) % pool.length;
     let guard = 0;
     while (used.has(idx) && guard < pool.length) {
@@ -87,6 +92,27 @@ export function rollShop(snapshot: GameSnapshot): GameSnapshot {
   };
 }
 
+function boardLengthAfterBuy(board: Piece[], pieceType: PieceType): number {
+  const sameOnes = board.filter((piece) => piece.type === pieceType && piece.star === 1);
+  if (sameOnes.length >= 2) {
+    return board.length - 1;
+  }
+  return board.length + 1;
+}
+
+/** Merge 3 matching 1-star pieces into one 2-star (V2.0 cap). */
+export function mergeMatchingOneStars(
+  board: Piece[],
+  pieceType: PieceType,
+): Piece[] {
+  const matches = board.filter((piece) => piece.type === pieceType && piece.star === 1);
+  if (matches.length < 3) return board;
+
+  const removeIds = new Set(matches.slice(0, 3).map((piece) => piece.id));
+  const merged = createPiece(pieceType, 2);
+  return [...board.filter((piece) => !removeIds.has(piece.id)), merged];
+}
+
 export function buyPiece(
   snapshot: GameSnapshot,
   pieceType: PieceType,
@@ -94,11 +120,11 @@ export function buyPiece(
   const template = PIECE_TEMPLATES[pieceType];
   const { state, board, shop } = snapshot;
 
-  if (board.length >= state.population) return snapshot;
+  if (boardLengthAfterBuy(board, pieceType) > state.population) return snapshot;
   if (state.gold < template.cost) return snapshot;
   if (!shop.slots.includes(pieceType)) return snapshot;
 
-  const piece = createPiece(pieceType);
+  const nextBoard = mergeMatchingOneStars([...board, createPiece(pieceType)], pieceType);
 
   return {
     ...snapshot,
@@ -106,14 +132,13 @@ export function buyPiece(
       ...state,
       gold: state.gold - template.cost,
     },
-    board: [...board, piece],
+    board: nextBoard,
   };
 }
 
-function sellRefund(piece: Piece): number {
+export function sellRefund(piece: Piece): number {
   if (piece.star === 1) return piece.cost;
-  if (piece.star === 2) return piece.cost * 3;
-  return piece.cost * 9;
+  return piece.cost * 3;
 }
 
 export function sellPiece(snapshot: GameSnapshot, pieceId: string): GameSnapshot {

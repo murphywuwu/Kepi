@@ -1,31 +1,55 @@
 "use client";
 
 import { EndingScene } from "@/components/game/ending";
+import type { EndingNarrativeContext } from "@/data/letters";
+import { buildEndingBattleSummary } from "@/data/letters";
+import type { EndingType } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useState } from "react";
 
-export default function EndingPreviewPage() {
-  const [variant, setVariant] = useState<"win" | "lose">("win");
+const PRESETS: Record<
+  EndingType,
+  { narrative: EndingNarrativeContext; stage: number }
+> = {
+  perfect_homecoming: {
+    stage: 4,
+    narrative: {
+      kebi: 4,
+      kebiThreshold: 4,
+      pawnedKebi: 0,
+      homeRepairTier: 3,
+      waterGuestSurvived: true,
+      waterGuestDied: false,
+    },
+  },
+  regretful_stay: {
+    stage: 4,
+    narrative: {
+      kebi: 2,
+      kebiThreshold: 4,
+      pawnedKebi: 1,
+      homeRepairTier: 2,
+      waterGuestSurvived: true,
+      waterGuestDied: false,
+    },
+  },
+  storm_rescue: {
+    stage: 2,
+    narrative: {
+      kebi: 1,
+      kebiThreshold: 4,
+      pawnedKebi: 0,
+      homeRepairTier: 0,
+      waterGuestSurvived: false,
+      waterGuestDied: true,
+    },
+  },
+};
 
-  const props =
-    variant === "win"
-      ? {
-          result: "win" as const,
-          kebi: 5,
-          homeRepair: 82,
-          survival: 1,
-          stage: 6,
-          battleSummary: "末关险胜，水客收齐五封客批，归乡票已成。",
-        }
-      : {
-          result: "lose" as const,
-          kebi: 2,
-          homeRepair: 34,
-          survival: 0,
-          stage: 4,
-          battleSummary: "存续度归零，未能撑到归乡。",
-        };
+export default function EndingPreviewPage() {
+  const [variant, setVariant] = useState<EndingType>("perfect_homecoming");
+  const preset = PRESETS[variant];
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 md:px-6">
@@ -33,21 +57,30 @@ export default function EndingPreviewPage() {
         <div>
           <h1 className="text-2xl font-semibold">结局预览</h1>
           <p className="text-sm text-muted-foreground">
-            Phase 5：AI 数字客批、真实侨批展示、手势/指针降级与音频钩子。
+            V2.0 三结局：完美归乡、遗憾留守、风浪抢救 — 共享手势接信过场。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
-            variant={variant === "win" ? "default" : "outline"}
-            onClick={() => setVariant("win")}
+            data-testid="ending-variant-perfect"
+            variant={variant === "perfect_homecoming" ? "default" : "outline"}
+            onClick={() => setVariant("perfect_homecoming")}
           >
-            归乡（赢）
+            完美归乡
           </Button>
           <Button
-            variant={variant === "lose" ? "default" : "outline"}
-            onClick={() => setVariant("lose")}
+            data-testid="ending-variant-regret"
+            variant={variant === "regretful_stay" ? "default" : "outline"}
+            onClick={() => setVariant("regretful_stay")}
           >
-            救信（输）
+            遗憾留守
+          </Button>
+          <Button
+            data-testid="ending-variant-storm"
+            variant={variant === "storm_rescue" ? "default" : "outline"}
+            onClick={() => setVariant("storm_rescue")}
+          >
+            风浪抢救
           </Button>
           <Button nativeButton={false} variant="outline" render={<Link href="/debug" />}>
             调试页
@@ -57,7 +90,14 @@ export default function EndingPreviewPage() {
 
       <EndingScene
         key={variant}
-        {...props}
+        endingType={variant}
+        narrative={preset.narrative}
+        stage={preset.stage}
+        battleSummary={buildEndingBattleSummary(
+          variant,
+          preset.narrative,
+          preset.stage,
+        )}
         gestureMode="pointer"
         onComplete={() => setVariant(variant)}
       />

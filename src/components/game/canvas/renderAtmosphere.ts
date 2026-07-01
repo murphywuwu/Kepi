@@ -5,13 +5,20 @@ import type { CanvasRenderState } from "./types";
 const BG_FOCAL_X = 0.5;
 const BG_FOCAL_Y = 0.46;
 
-/** Mid-scene overlays: combat tint, settlement repair sparkle. */
+/** Mid-scene overlays: combat tint, settlement repair sparkle, water guest crisis. */
 export function renderSceneAtmosphere(
   ctx: CanvasRenderingContext2D,
   state: CanvasRenderState,
 ): void {
   if (state.phase === "battle") {
     drawBattleCombatTint(ctx, state);
+    if (state.waterGuestCrisisLevel > 0) {
+      drawWaterGuestCrisisVignette(ctx, state);
+    }
+  }
+
+  if (state.waterGuestDeathFlash > 0) {
+    drawWaterGuestDeathFlash(ctx, state);
   }
 }
 
@@ -105,6 +112,44 @@ function drawBattleCombatTint(
   ctx.fillStyle = enemyHalf;
   ctx.fillRect(0, 0, width, height * 0.42);
 
+  ctx.restore();
+}
+
+function drawWaterGuestCrisisVignette(
+  ctx: CanvasRenderingContext2D,
+  state: CanvasRenderState,
+): void {
+  const { width, height } = state.metrics;
+  const level = state.waterGuestCrisisLevel;
+  const pulse = 0.55 + 0.45 * Math.sin(state.timeMs * 0.005);
+  const alpha = level === 2 ? 0.34 * pulse : 0.2 * pulse;
+  const color = level === 2 ? "193, 18, 31" : "255, 209, 102";
+
+  ctx.save();
+  const vignette = ctx.createRadialGradient(
+    width * 0.5,
+    height * 0.52,
+    width * 0.18,
+    width * 0.5,
+    height * 0.52,
+    width * 0.72,
+  );
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(0.55, `rgba(${color}, ${alpha * 0.35})`);
+  vignette.addColorStop(1, `rgba(${color}, ${alpha})`);
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+}
+
+function drawWaterGuestDeathFlash(
+  ctx: CanvasRenderingContext2D,
+  state: CanvasRenderState,
+): void {
+  const { width, height } = state.metrics;
+  ctx.save();
+  ctx.fillStyle = `rgba(240, 240, 235, ${state.waterGuestDeathFlash})`;
+  ctx.fillRect(0, 0, width, height);
   ctx.restore();
 }
 

@@ -7,7 +7,7 @@ import {
 } from "../../src/lib/game/boardLayout";
 
 /**
- * Plays a full 1-6 stage run by driving the real game UI (`/`).
+ * Plays a full 1-4 stage run by driving the real game UI (`/`).
  *
  * Strategy B: best-effort play — buy/upgrade to fill the army, place pieces in a
  * front/back formation, fight, then advance. Win or lose, the run walks all the
@@ -116,7 +116,7 @@ async function fightAndAdvance(page: Page): Promise<boolean> {
   return ended;
 }
 
-test("plays a full 1-6 stage run to the ending", async ({ page }) => {
+test("plays a full 1-4 stage run to the ending", async ({ page }) => {
   test.setTimeout(180_000);
 
   // Start from a clean slate so we always begin at stage 1.
@@ -131,7 +131,7 @@ test("plays a full 1-6 stage run to the ending", async ({ page }) => {
   await page.goto("/");
   await expect(startBattleButton(page)).toBeVisible({ timeout: 20_000 });
 
-  for (let stage = 1; stage <= 6; stage += 1) {
+  for (let stage = 1; stage <= 4; stage += 1) {
     if (!(await inPrep(page))) break;
 
     await buildArmy(page);

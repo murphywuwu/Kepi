@@ -12,7 +12,8 @@ export const BOARD_ROWS = 5;
  */
 export const BOARD_ANCHOR = {
   centerXRatio: 0.5,
-  allyBottomRatio: 0.56,
+  /** Lift ally rows so front line clears the prep bench + letter dock. */
+  allyBottomRatio: 0.52,
   boardWidthRatio: 0.44,
   boardHeightRatio: 0.34,
 } as const;

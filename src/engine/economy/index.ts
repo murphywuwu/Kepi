@@ -1,31 +1,33 @@
 import type { GameSnapshot } from "@/types";
-import {
-  INTEREST_PER_TEN_GOLD,
-  MAX_INTEREST,
-  ROUND_WAGE,
-  streakBonus,
-} from "../constants";
+import { PAWN_KEBI_GOLD, ROUND_WAGE } from "../constants";
 
-export function calcInterest(gold: number): number {
-  const raw = Math.floor(gold / 10) * INTEREST_PER_TEN_GOLD;
-  return Math.min(raw, MAX_INTEREST);
-}
-
-export function calcStreakBonus(winStreak: number, loseStreak: number): number {
-  return streakBonus(winStreak, loseStreak);
-}
-
+/** V2.0: fixed round wage only — no interest or streak bonuses. */
 export function applyRoundIncome(snapshot: GameSnapshot): GameSnapshot {
   const { state } = snapshot;
-  const interest = calcInterest(state.gold);
-  const bonus = calcStreakBonus(state.winStreak, state.loseStreak);
-  const income = ROUND_WAGE + interest + bonus;
 
   return {
     ...snapshot,
     state: {
       ...state,
-      gold: state.gold + income,
+      gold: state.gold + ROUND_WAGE,
+    },
+  };
+}
+
+/** Prep-only: exchange one kebi for immediate gold. */
+export function pawnKebi(snapshot: GameSnapshot): GameSnapshot {
+  if (snapshot.phase !== "prep") return snapshot;
+  if (snapshot.state.kebi < 1) return snapshot;
+
+  const { state } = snapshot;
+  return {
+    ...snapshot,
+    state: {
+      ...state,
+      kebi: state.kebi - 1,
+      gold: state.gold + PAWN_KEBI_GOLD,
+      pawnedKebi: state.pawnedKebi + 1,
+      roundPawnCount: state.roundPawnCount + 1,
     },
   };
 }

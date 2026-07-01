@@ -4,6 +4,7 @@ test("diagnose shop buy", async ({ page }) => {
   test.setTimeout(60_000);
   const logs: string[] = [];
   page.on("console", (m) => logs.push(`[console] ${m.type()}: ${m.text()}`));
+  page.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
 
   await page.addInitScript(() => {
     try {
@@ -20,8 +21,18 @@ test("diagnose shop buy", async ({ page }) => {
   const popText = page.locator("text=/人口\\s*\\d+\\/\\d+/");
   console.log("pop before:", (await popText.first().innerText()).trim());
 
-  await slot.click();
+  await page.getByRole("button", { name: /^农民/ }).first().click({ force: true });
   await page.waitForTimeout(500);
+
+  const stored = await page.evaluate(() => {
+    const keys = Object.keys(localStorage);
+    const snap = localStorage.getItem("kepi.snapshot");
+    return { keys, snap: snap ? JSON.parse(snap) : null };
+  });
+  console.log("localStorage keys:", stored.keys);
+  console.log("stored board len:", stored.snap?.board?.length ?? null);
+  console.log("stored slots:", stored.snap?.shop?.slots ?? null);
+  console.log("stored phase:", stored.snap?.phase ?? null);
 
   console.log("pop after:", (await popText.first().innerText()).trim());
   console.log("bench count:", await page.locator('[data-testid="bench-piece"]').count());

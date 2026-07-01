@@ -6,6 +6,7 @@ const PREP_ACTIONS = new Set<GameAction["type"]>([
   "MOVE_PIECE",
   "REFRESH_SHOP",
   "BUY_POPULATION",
+  "PAWN_KEBI",
   "START_BATTLE",
 ]);
 

@@ -4,6 +4,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ASSET_MANIFEST } from "@/data/assets";
 import { spawnEnemiesForStage } from "@/engine/battle";
 import {
+  playTulouBattleStartSfx,
+  playTulouCheatDeathSfx,
+  playWaterGuestBreathSfx,
+  playWaterGuestDeathSfx,
+  playWaterGuestHeartbeatSfx,
+} from "@/lib/audio/battleSfx";
+import {
   ENEMY_VISUALS,
   homeRepairThemeStage,
   PIECE_VISUALS,
@@ -64,6 +71,9 @@ export function useGameCanvas(
   const lastEventCountRef = useRef(0);
   const lastKebiFxRef = useRef(snapshot.state.kebi);
   const prepFxRef = useRef(useFxStore.getState().prepFx);
+  const lastTulouStartTierRef = useRef<number | null>(null);
+  const waterGuestDeathFlashAtRef = useRef<number | null>(null);
+  const lastWaterGuestCrisisRef = useRef<0 | 1 | 2>(0);
   const hoveredTargetRef = useRef<{ side: "ally" | "enemy"; unitId: string } | null>(
     null,
   );
@@ -111,12 +121,22 @@ export function useGameCanvas(
     if (snapshot.phase === "battle" && snapshot.battle?.tick === 0) {
       attackPulsesRef.current = [];
       lastEventCountRef.current = 0;
+      waterGuestDeathFlashAtRef.current = null;
+      lastWaterGuestCrisisRef.current = 0;
+      const tier = snapshot.battle.tulouBuffs?.tier ?? snapshot.state.homeRepairTier;
+      if (lastTulouStartTierRef.current !== tier) {
+        playTulouBattleStartSfx(tier);
+        lastTulouStartTierRef.current = tier;
+      }
     }
     if (snapshot.phase !== "battle" && snapshot.phase !== "settlement") {
       attackPulsesRef.current = [];
       lastEventCountRef.current = 0;
+      waterGuestDeathFlashAtRef.current = null;
+      lastWaterGuestCrisisRef.current = 0;
+      lastTulouStartTierRef.current = null;
     }
-  }, [snapshot.phase, snapshot.battle?.tick]);
+  }, [snapshot.phase, snapshot.battle?.tick, snapshot.battle?.tulouBuffs?.tier, snapshot.state.homeRepairTier]);
 
   useEffect(() => {
     const events = snapshot.battle?.events ?? [];
@@ -125,16 +145,53 @@ export function useGameCanvas(
       attackPulsesRef.current.push(
         ...collectNewAttackPulses(events, lastEventCountRef.current, now),
       );
+
+      const shuikeId = snapshot.battle?.waterGuest.pieceId;
+      if (shuikeId) {
+        for (let i = lastEventCountRef.current; i < events.length; i += 1) {
+          const event = events[i];
+          if (event?.type === "kill" && event.unitId === shuikeId) {
+            waterGuestDeathFlashAtRef.current = now;
+            playWaterGuestDeathSfx();
+          }
+          if (
+            event?.type === "skill" &&
+            event.skillId === "tulou_cheat_death"
+          ) {
+            playTulouCheatDeathSfx();
+          }
+        }
+      } else {
+        for (let i = lastEventCountRef.current; i < events.length; i += 1) {
+          const event = events[i];
+          if (
+            event?.type === "skill" &&
+            event.skillId === "tulou_cheat_death"
+          ) {
+            playTulouCheatDeathSfx();
+          }
+        }
+      }
+
       lastEventCountRef.current = events.length;
     }
-  }, [snapshot.battle?.events]);
+  }, [snapshot.battle?.events, snapshot.battle?.waterGuest.pieceId]);
 
   useEffect(() => {
     const settlement = snapshot.settlement;
     const won =
       snapshot.phase === "settlement" && (snapshot.lastBattleResult?.won ?? false);
     if (won && settlement && snapshotKebi > lastKebiFxRef.current) {
-      playSettlementSfx(settlement.homeRepairGained > 0);
+      const collect = new Audio(ASSET_MANIFEST.audio.sfxCollectLetter);
+      collect.volume = 0.72;
+      void collect.play().catch(() => undefined);
+      if (settlement.homeRepairGained > 0) {
+        window.setTimeout(() => {
+          const repair = new Audio(ASSET_MANIFEST.audio.sfxRepairHome);
+          repair.volume = 0.64;
+          void repair.play().catch(() => undefined);
+        }, 650);
+      }
     }
     lastKebiFxRef.current = snapshotKebi;
   }, [snapshotKebi, snapshot.phase, snapshot.lastBattleResult, snapshot.settlement]);
@@ -195,11 +252,34 @@ export function useGameCanvas(
 
     useFxStore.getState().prunePrepFx(now);
 
+    const waterGuestCrisisLevel = resolveWaterGuestCrisisLevel(
+      current.phase,
+      allies,
+      current.battle?.waterGuest.pieceId,
+    );
+    if (
+      current.phase === "battle" &&
+      waterGuestCrisisLevel !== lastWaterGuestCrisisRef.current
+    ) {
+      if (waterGuestCrisisLevel === 1) playWaterGuestBreathSfx();
+      if (waterGuestCrisisLevel === 2) playWaterGuestHeartbeatSfx();
+      lastWaterGuestCrisisRef.current = waterGuestCrisisLevel;
+    }
+
+    const flashStarted = waterGuestDeathFlashAtRef.current;
+    const waterGuestDeathFlash =
+      flashStarted === null ? 0 : Math.max(0, 1 - (now - flashStarted) / 500);
+
     const state: CanvasRenderState = {
       metrics,
       phase: current.phase,
+      stage: current.state.stage,
       tulouStage,
       homeRepair: current.state.homeRepair,
+      homeRepairTier:
+        current.battle?.tulouBuffs.tier ?? current.state.homeRepairTier,
+      tulouShieldHp: current.battle?.tulouBuffs.shieldHp ?? {},
+      tulouCheatDeathAvailable: current.battle?.tulouBuffs.cheatDeathAvailable ?? [],
       allies,
       enemies,
       hoveredAllyCell: hoveredAllyCellRef.current,
@@ -219,6 +299,8 @@ export function useGameCanvas(
       hoveredUnit: hoveredTargetRef.current,
       imageCache: imageCache.current,
       portraitCache: portraitCache.current,
+      waterGuestCrisisLevel,
+      waterGuestDeathFlash,
       requestRepaint: () => paintRef.current(),
     };
 
@@ -285,7 +367,7 @@ export function useGameCanvas(
       current.phase === "battle" ||
       current.phase === "settlement";
     if (showEnemies) {
-      const enemies = spawnEnemiesForStage(current.state.stage);
+      const enemies = spawnEnemiesForStage(current.state.stage, current.board);
       for (const enemy of enemies) {
         const meta = ENEMY_VISUALS[enemy.type];
         loadCachedImage(cache, meta.portrait, onLoad);
@@ -449,7 +531,7 @@ export function useGameCanvas(
 
       if (current.phase !== "prep") return;
 
-      const enemies = spawnEnemiesForStage(current.state.stage);
+      const enemies = spawnEnemiesForStage(current.state.stage, current.board);
       const selectedId = selectedRef.current;
 
       if (selectedId) {
@@ -492,17 +574,16 @@ export function useGameCanvas(
   }, [canvasRef, onCellClick, onUnitClick]);
 }
 
-function playSettlementSfx(playRepair: boolean): void {
-  if (typeof window === "undefined") return;
-
-  const collect = new Audio(ASSET_MANIFEST.audio.sfxCollectLetter);
-  collect.volume = 0.72;
-  void collect.play().catch(() => undefined);
-
-  if (!playRepair) return;
-  window.setTimeout(() => {
-    const repair = new Audio(ASSET_MANIFEST.audio.sfxRepairHome);
-    repair.volume = 0.64;
-    void repair.play().catch(() => undefined);
-  }, 650);
+function resolveWaterGuestCrisisLevel(
+  phase: GameSnapshot["phase"],
+  allies: Piece[],
+  pieceId: string | null | undefined,
+): 0 | 1 | 2 {
+  if (phase !== "battle" || !pieceId) return 0;
+  const shuike = allies.find((piece) => piece.id === pieceId);
+  if (!shuike || shuike.hp <= 0) return 0;
+  const ratio = shuike.hp / shuike.maxHp;
+  if (ratio <= 0.3) return 2;
+  if (ratio <= 0.5) return 1;
+  return 0;
 }

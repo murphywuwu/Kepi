@@ -64,7 +64,28 @@ export const PIECE_VISUALS: Record<PieceType, UnitVisualMeta> = {
     portrait: ASSET_MANIFEST.characters.patriarch.star1,
     placeholder: "/images/characters/patriarch.svg",
   },
+  shuike: {
+    label: "水客",
+    shortLabel: "水",
+    color: "#6b8cae",
+    portrait: ASSET_MANIFEST.characters.shuike,
+    placeholder: "/images/characters/shuike.svg",
+  },
+  xiangxian: {
+    label: "乡贤",
+    shortLabel: "贤",
+    color: "#4a6741",
+    portrait: ASSET_MANIFEST.characters.xiangxian,
+    placeholder: "/images/characters/xiangxian.svg",
+  },
 };
+
+/** Logistics pieces that must deploy and survive — not passive support slots. */
+export const PROTECTED_PIECE_TYPES: readonly PieceType[] = ["shuike", "xiangxian"];
+
+export function isProtectedPiece(type: PieceType): boolean {
+  return PROTECTED_PIECE_TYPES.includes(type);
+}
 
 export const ENEMY_VISUALS: Record<EnemyType, UnitVisualMeta> = {
   qianhaibei: {

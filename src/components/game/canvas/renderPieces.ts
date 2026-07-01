@@ -12,6 +12,7 @@ import type { CanvasRenderState, CanvasTheme } from "./types";
 
 type UnitDrawJob = {
   id: string;
+  pieceType?: Piece["type"];
   x: number;
   y: number;
   sortY: number;
@@ -102,6 +103,27 @@ function drawPreviewRing(
   ctx.restore();
 }
 
+function drawProtectRing(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  feetY: number,
+  cellSize: number,
+  hpRatio: number,
+): void {
+  const stroke =
+    hpRatio <= 0.3 ? "#e63946" : hpRatio <= 0.5 ? "#ffd166" : "#8ecae6";
+  const pulse = 0.65 + 0.35 * Math.sin(performance.now() * 0.008);
+
+  ctx.save();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = hpRatio <= 0.3 ? 3 : 2;
+  ctx.globalAlpha = hpRatio <= 0.3 ? pulse : 0.85;
+  ctx.beginPath();
+  ctx.ellipse(x, feetY, cellSize * 0.44, cellSize * 0.16, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawHoverRing(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -112,7 +134,7 @@ function drawHoverRing(
   ctx.save();
   ctx.strokeStyle = stroke;
   ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.75;
+  ctx.globalAlpha = 0.55;
   ctx.beginPath();
   ctx.ellipse(x, feetY, cellSize * 0.4, cellSize * 0.14, 0, 0, Math.PI * 2);
   ctx.stroke();
@@ -208,6 +230,10 @@ function drawUnit(
     drawFootGlow(ctx, drawXBase, feetYBase, cellSize, stroke);
   }
 
+  if (job.pieceType === "shuike" && showHpBar && !preview) {
+    drawProtectRing(ctx, drawXBase, feetYBase, cellSize, hpRatio);
+  }
+
   const portraitImg = loadPortrait(cache, portrait, placeholder, onLoad);
   ctx.save();
   if (preview) {
@@ -272,6 +298,7 @@ export function renderUnitsLayer(
     const motion = state.unitMotionPx[piece.id];
     jobs.push({
       id: piece.id,
+      pieceType: piece.type,
       x,
       y,
       sortY: y,
@@ -326,9 +353,48 @@ export function renderUnitsLayer(
 
   for (const job of jobs) {
     drawUnit(ctx, job, cellSize, state.portraitCache, state.requestRepaint);
+    if (state.phase === "battle" && job.pieceType) {
+      drawTulouBattleAura(ctx, job, cellSize, state);
+    }
   }
 
   renderPlacementGhost(ctx, state, theme);
+}
+
+function drawTulouBattleAura(
+  ctx: CanvasRenderingContext2D,
+  job: UnitDrawJob,
+  cellSize: number,
+  state: CanvasRenderState,
+): void {
+  const tier = state.homeRepairTier;
+  const shield = state.tulouShieldHp[job.id] ?? 0;
+  const hasCheatDeath = state.tulouCheatDeathAvailable.includes(job.id);
+  const feetY = job.y + cellSize * UNIT_FEET_OFFSET_RATIO;
+  const pulse = 0.65 + 0.35 * Math.sin(state.timeMs * 0.005 + job.x * 0.01);
+
+  ctx.save();
+
+  if (tier >= 1 && shield > 0) {
+    ctx.globalAlpha = 0.35 * pulse;
+    ctx.strokeStyle = "rgba(246, 193, 119, 0.85)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(job.x, feetY - cellSize * 0.35, cellSize * 0.34, cellSize * 0.48, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (tier >= 3 && hasCheatDeath) {
+    ctx.globalAlpha = 0.42 * pulse;
+    ctx.strokeStyle = "rgba(255, 214, 140, 0.9)";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.ellipse(job.x, feetY - cellSize * 0.35, cellSize * 0.38, cellSize * 0.52, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 function renderPlacementGhost(

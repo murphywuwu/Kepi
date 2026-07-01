@@ -3,30 +3,24 @@ import { z } from "zod";
 const rangeSchema = z.enum(["melee", "mid", "ranged"]);
 
 export const pieceDefinitionSchema = z.object({
-  type: z.enum(["farmer", "guard", "teacher", "fengshui", "patriarch"]),
+  type: z.enum([
+    "farmer",
+    "guard",
+    "teacher",
+    "fengshui",
+    "patriarch",
+    "shuike",
+    "xiangxian",
+  ]),
   name: z.string().min(1),
   cost: z.number().int().min(1).max(5),
   hp: z.number().int().positive(),
   atk: z.number().int().nonnegative(),
-  atkSpeed: z.number().positive(),
+  atkSpeed: z.number().nonnegative(),
   armor: z.number().int().nonnegative(),
   range: rangeSchema,
   clan: z.string().min(1),
   skillId: z.string().min(1),
-  description: z.string().min(1),
-  assetId: z.string().min(1),
-  portrait: z.string().startsWith("/images/"),
-});
-
-export const supportDefinitionSchema = z.object({
-  type: z.enum(["shuike", "xiangxian"]),
-  name: z.string().min(1),
-  costTier: z.number().positive(),
-  hp: z.number().int().positive(),
-  atk: z.number().int().nonnegative(),
-  atkSpeed: z.number().nonnegative(),
-  armor: z.number().int().nonnegative(),
-  range: rangeSchema.nullable(),
   description: z.string().min(1),
   assetId: z.string().min(1),
   portrait: z.string().startsWith("/images/"),
@@ -49,12 +43,13 @@ export const enemyDefinitionSchema = z.object({
   atkSpeed: z.number().positive(),
   armor: z.number().int().nonnegative(),
   range: rangeSchema,
+  role: z.enum(["tank", "warrior", "control", "dps", "ranged", "assassin"]),
   historicalNote: z.string().min(1),
   description: z.string().min(1),
 });
 
 export const stageDefinitionSchema = z.object({
-  stage: z.number().int().min(1).max(6),
+  stage: z.number().int().min(1).max(4),
   name: z.string().min(1),
   enemyCount: z.number().int().min(1).max(6),
   scaling: z.number().positive(),
@@ -66,36 +61,34 @@ export const stageDefinitionSchema = z.object({
 });
 
 export const balanceSchema = z.object({
-  snapshotVersion: z.number().int().positive(),
+  snapshotVersion: z.literal(2),
   initial: z.object({
     stage: z.literal(1),
-    totalStages: z.literal(6),
+    totalStages: z.literal(4),
     survival: z.literal(2),
     kebi: z.literal(0),
-    kebiThreshold: z.literal(5),
+    kebiThreshold: z.literal(4),
     sangzi: z.literal(0),
     homeRepair: z.literal(0),
+    homeRepairTier: z.literal(0),
     gold: z.literal(10),
     population: z.literal(3),
     winStreak: z.literal(0),
     loseStreak: z.literal(0),
+    pawnedKebi: z.literal(0),
+    roundPawnCount: z.literal(0),
     result: z.null(),
+    endingType: z.null(),
   }),
   population: z.object({
     max: z.literal(6),
-    upgradeCost: z.number().int().positive(),
+    upgradeCost: z.literal(4),
   }),
   economy: z.object({
     roundWage: z.literal(5),
-    interestPerTenGold: z.literal(1),
-    maxInterest: z.literal(5),
-    shopRefreshCost: z.literal(2),
+    shopRefreshCost: z.literal(1),
     shopSlotCount: z.literal(5),
-    streakBonuses: z.object({
-      2: z.literal(1),
-      3: z.literal(2),
-      4: z.literal(3),
-    }),
+    pawnGold: z.literal(15),
   }),
   battle: z.object({
     tickMs: z.literal(8),
@@ -107,9 +100,16 @@ export const balanceSchema = z.object({
     damageMultiplier: z.literal(1.75),
   }),
   progression: z.object({
-    sangziPerWin: z.number().int().positive(),
-    homeRepairPerWin: z.number().int().positive(),
+    sangziPerWin: z.literal(20),
+    homeRepairPerWin: z.literal(20),
     starHpAtkMultiplier: z.literal(2),
+    xiangxianRepairBonus: z.literal(1.5),
+  }),
+  tulouBuff: z.object({
+    shieldRatio: z.literal(0.2),
+    atkSpeedBonus: z.literal(0.15),
+    cheatDeathInvincibleMs: z.literal(1500),
+    milestones: z.tuple([z.literal(33), z.literal(66), z.literal(99)]),
   }),
 });
 

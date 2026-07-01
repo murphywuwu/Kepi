@@ -1,6 +1,8 @@
-import { gameSnapshotSchema } from "@/lib/schemas";
 import type { GameSnapshot } from "@/types";
 import { STORAGE_KEYS } from "./keys";
+import { parseStoredSnapshot } from "./migrate";
+
+export type SnapshotDiscardReason = "corrupt" | "legacy";
 
 export function saveSnapshot(snapshot: GameSnapshot): void {
   if (typeof window === "undefined") return;
@@ -15,10 +17,45 @@ export function loadSnapshot(): GameSnapshot | null {
 
   try {
     const parsed = JSON.parse(raw) as unknown;
-    const result = gameSnapshotSchema.safeParse(parsed);
-    return result.success ? (result.data as GameSnapshot) : null;
+    const result = parseStoredSnapshot(parsed);
+    if (!result.ok) {
+      if (result.reason === "legacy" || result.reason === "corrupt") {
+        clearSnapshot();
+      }
+      return null;
+    }
+    return result.snapshot;
   } catch {
+    clearSnapshot();
     return null;
+  }
+}
+
+export function loadSnapshotWithMeta():
+  | { snapshot: GameSnapshot; discarded: false }
+  | { snapshot: null; discarded: false }
+  | { snapshot: null; discarded: true; reason: SnapshotDiscardReason } {
+  if (typeof window === "undefined") {
+    return { snapshot: null, discarded: false };
+  }
+
+  const raw = window.localStorage.getItem(STORAGE_KEYS.snapshot);
+  if (!raw) return { snapshot: null, discarded: false };
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const result = parseStoredSnapshot(parsed);
+    if (result.ok) {
+      return { snapshot: result.snapshot, discarded: false };
+    }
+    if (result.reason === "legacy" || result.reason === "corrupt") {
+      clearSnapshot();
+      return { snapshot: null, discarded: true, reason: result.reason };
+    }
+    return { snapshot: null, discarded: false };
+  } catch {
+    clearSnapshot();
+    return { snapshot: null, discarded: true, reason: "corrupt" };
   }
 }
 

@@ -36,6 +36,8 @@ type UIStore = {
   setDebugOpen: (open: boolean) => void;
   letterStripExpanded: boolean;
   setLetterStripExpanded: (open: boolean) => void;
+  bottomDockHeightPx: number;
+  setBottomDockHeightPx: (height: number) => void;
   domPieceInspect: DomPieceInspect | null;
   setDomPieceInspect: (inspect: DomPieceInspect | null) => void;
   settingsOpen: boolean;
@@ -66,6 +68,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   letterStripExpanded: false,
   setLetterStripExpanded: (letterStripExpanded) => set({ letterStripExpanded }),
+
+  bottomDockHeightPx: 0,
+  setBottomDockHeightPx: (bottomDockHeightPx) => set({ bottomDockHeightPx }),
 
   domPieceInspect: null,
   setDomPieceInspect: (domPieceInspect) => set({ domPieceInspect }),

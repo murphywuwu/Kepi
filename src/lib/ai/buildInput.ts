@@ -14,6 +14,12 @@ export function buildAIPromptFromSnapshot(snapshot: GameSnapshot): AIPromptInput
     survival: state.survival,
     battleSummary,
     result:
-      state.result === "win" || state.result === "lose" ? state.result : undefined,
+      state.endingType === "perfect_homecoming"
+        ? "win"
+        : state.endingType === "regretful_stay" || state.endingType === "storm_rescue"
+          ? "lose"
+          : state.result === "win" || state.result === "lose"
+            ? state.result
+            : undefined,
   };
 }

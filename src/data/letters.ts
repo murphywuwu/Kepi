@@ -1,4 +1,5 @@
 import type { ArchivalLetter, DigitalLetterFallback } from "./types";
+import type { EndingType, HomeRepairTier } from "@/types";
 
 /** Museum letter shape used by ending UI and AI prompt tone samples. */
 export type MuseumLetter = {
@@ -92,15 +93,142 @@ export const ENDING_ASSETS = {
   paperTexture: "/images/ending/paper-texture.svg",
   waveSfx: "/audio/sfx/ending-wave.mp3",
   openSfx: "/audio/sfx/letter-open.mp3",
+  perfectBg: "/images/board/kepi_tulou-stage5-lanterns.png",
+  regretBg: "/images/board/kepi_tulou-stage3-gate.png",
+  stormBg: "/images/ending/kepi_wind-wave-background.png",
+  seaPassage: "/images/ending/kepi_wind-wave-background.png",
 } as const;
 
+export type EndingNarrativeContext = {
+  kebi: number;
+  kebiThreshold: number;
+  pawnedKebi: number;
+  homeRepairTier: HomeRepairTier;
+  waterGuestSurvived: boolean;
+  waterGuestDied: boolean;
+};
+
+export const ENDING_SCENE_COPY: Record<
+  EndingType,
+  {
+    badge: string;
+    title: string;
+    intro: string;
+    sceneClass: string;
+  }
+> = {
+  perfect_homecoming: {
+    badge: "完美归乡",
+    title: "归乡 · 风浪中的客批",
+    intro:
+      "水客凭归乡票装船启航。风浪掀起，客批散落空中——伸手护住这些牵挂，土楼灯火已在彼岸等候。",
+    sceneClass: "kepi-ending-scene--perfect",
+  },
+  regretful_stay: {
+    badge: "遗憾留守",
+    title: "留守 · 寨子里的客批",
+    intro:
+      "寨子守住了，土楼也亮了灯，但归乡的票还差几封客批。风里仍有信飘来——护住它们，便是护住未竟的乡愁。",
+    sceneClass: "kepi-ending-scene--regret",
+  },
+  storm_rescue: {
+    badge: "风浪抢救",
+    title: "抢救 · 风浪中的侨批碎片",
+    intro:
+      "风浪卷走了归途，寨子没能撑到最后。但散落的侨批碎片仍在浪里——伸手，从风浪中一封封救起它们。",
+    sceneClass: "kepi-ending-scene--storm",
+  },
+};
+
+/** Envelope count for the shared gesture catch phase. */
+export function endingLetterCount(
+  endingType: EndingType,
+  ctx: EndingNarrativeContext,
+): number {
+  const cap = ARCHIVAL_LETTERS.length;
+  switch (endingType) {
+    case "perfect_homecoming":
+      return Math.max(1, Math.min(ctx.kebi, cap));
+    case "regretful_stay":
+      return Math.max(1, Math.min(ctx.kebi, cap));
+    case "storm_rescue":
+      return Math.max(1, Math.min(Math.max(ctx.kebi, ctx.pawnedKebi), cap));
+  }
+}
+
+export function endingSubtitle(
+  endingType: EndingType,
+  ctx: EndingNarrativeContext,
+): string {
+  switch (endingType) {
+    case "perfect_homecoming":
+      return `你让 ${ctx.kebi} 个客家人的牵挂回了家。土楼灯火通明，水客踏上了归船。侨批于 2013 年入选《世界记忆名录》。`;
+    case "regretful_stay": {
+      const tulouNote =
+        ctx.homeRepairTier >= 2
+          ? "土楼已修缮一新，"
+          : ctx.homeRepairTier >= 1
+            ? "土楼渐有生气，"
+            : "";
+      const pawnNote =
+        ctx.pawnedKebi > 0
+          ? `其中 ${ctx.pawnedKebi} 封曾典当救急，`
+          : "";
+      return `${tulouNote}人活着，寨子保住了，但只攒下 ${ctx.kebi}/${ctx.kebiThreshold} 封客批${pawnNote}归乡的票还差一程。侨批于 2013 年入选《世界记忆名录》。`;
+    }
+    case "storm_rescue":
+      if (ctx.kebi > 0) {
+        return `风浪卷走了归途，但 ${ctx.kebi} 封客批已被护在怀中。${ctx.waterGuestDied ? "水客没能走完最后一程，" : ""}你至少护住了一份牵挂。侨批于 2013 年入选《世界记忆名录》。`;
+      }
+      return "风浪卷走了归途，但寨子的牵挂仍在。你从浪里救起侨批碎片，便是护住客家人的乡愁。侨批于 2013 年入选《世界记忆名录》。";
+  }
+}
+
+export function buildEndingBattleSummary(
+  endingType: EndingType,
+  ctx: EndingNarrativeContext,
+  stage: number,
+): string {
+  const base = `第 ${stage} 关收束 · 客批 ${ctx.kebi}/${ctx.kebiThreshold}`;
+  switch (endingType) {
+    case "perfect_homecoming":
+      return `${base} · 归乡票已成，水客${ctx.waterGuestSurvived ? "平安" : ""}收齐客批。`;
+    case "regretful_stay":
+      return `${base} · 寨子守住，${ctx.pawnedKebi > 0 ? `曾典当 ${ctx.pawnedKebi} 封，` : ""}归乡不足。`;
+    case "storm_rescue":
+      return `${base} · 存续度归零，${ctx.waterGuestDied ? "水客战死，" : ""}风浪中抢救侨批。`;
+  }
+}
+
+/** @deprecated Use endingSubtitle(endingType, ctx) — kept for preview page compat. */
 export const ENDING_SUBTITLES = {
   win: (kebi: number) =>
-    `你让 ${kebi} 个客家人的牵挂回了家。侨批于 2013 年入选《世界记忆名录》。`,
+    endingSubtitle("perfect_homecoming", {
+      kebi,
+      kebiThreshold: 4,
+      pawnedKebi: 0,
+      homeRepairTier: 2,
+      waterGuestSurvived: true,
+      waterGuestDied: false,
+    }),
   lose: (kebi: number) =>
     kebi > 0
-      ? `风浪卷走了归途，但 ${kebi} 封客批已被护在怀中。侨批于 2013 年入选《世界记忆名录》。`
-      : "风浪卷走了归途，但寨子的牵挂仍在。侨批于 2013 年入选《世界记忆名录》。",
+      ? endingSubtitle("storm_rescue", {
+          kebi,
+          kebiThreshold: 4,
+          pawnedKebi: 0,
+          homeRepairTier: 0,
+          waterGuestSurvived: false,
+          waterGuestDied: false,
+        })
+      : endingSubtitle("storm_rescue", {
+          kebi: 0,
+          kebiThreshold: 4,
+          pawnedKebi: 0,
+          homeRepairTier: 0,
+          waterGuestSurvived: false,
+          waterGuestDied: false,
+        }),
 } as const;
 
 /** Local fallback pool when AI digital-letter generation fails — PRD §6.13. */

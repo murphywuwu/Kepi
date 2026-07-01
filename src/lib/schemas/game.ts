@@ -11,6 +11,8 @@ export const pieceTypeSchema = z.enum([
   "teacher",
   "fengshui",
   "patriarch",
+  "shuike",
+  "xiangxian",
 ]);
 
 export const enemyTypeSchema = z.enum([
@@ -22,11 +24,15 @@ export const enemyTypeSchema = z.enum([
   "xiedouhuo",
 ]);
 
-export const supportTypeSchema = z.enum(["shuike", "xiangxian"]);
-
 export const rangeTypeSchema = z.enum(["melee", "mid", "ranged"]);
 
 export const gameResultSchema = z.enum(["playing", "win", "lose"]).nullable();
+
+export const endingTypeSchema = z.enum([
+  "perfect_homecoming",
+  "regretful_stay",
+  "storm_rescue",
+]).nullable();
 
 export const scenePhaseSchema = z.enum([
   "prep",
@@ -44,18 +50,27 @@ export const gameStateSchema = z.object({
   kebiThreshold: z.number().int().min(1),
   sangzi: z.number().int().min(0),
   homeRepair: z.number().min(0).max(100),
+  homeRepairTier: z.union([
+    z.literal(0),
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+  ]),
   gold: z.number().int().min(0),
   population: z.number().int().min(1),
   winStreak: z.number().int().min(0),
   loseStreak: z.number().int().min(0),
+  pawnedKebi: z.number().int().min(0),
+  roundPawnCount: z.number().int().min(0).default(0),
   result: gameResultSchema,
+  endingType: endingTypeSchema.default(null),
 });
 
 export const pieceSchema = z.object({
   id: z.string().min(1),
   type: pieceTypeSchema,
   cost: z.number().positive(),
-  star: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  star: z.union([z.literal(1), z.literal(2)]),
   hp: z.number(),
   maxHp: z.number().positive(),
   atk: z.number().min(0),
@@ -78,11 +93,6 @@ export const enemySchema = z.object({
   position: boardPositionSchema,
 });
 
-export const supportUnitSchema = z.object({
-  type: supportTypeSchema,
-  slot: supportTypeSchema,
-});
-
 export const battleEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("attack"),
@@ -102,6 +112,12 @@ export const battleEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("roundEnd"),
   }),
+  z.object({
+    type: z.literal("waterGuestSurvived"),
+  }),
+  z.object({
+    type: z.literal("waterGuestDied"),
+  }),
 ]);
 
 export const shopStateSchema = z.object({
@@ -118,6 +134,12 @@ export const battleResultSchema = z.object({
   enemiesRemaining: z.number().int().min(0),
   allyHpPercent: z.number().min(0),
   enemyHpPercent: z.number().min(0),
+  waterGuest: z.object({
+    pieceId: z.string().nullable(),
+    deployed: z.boolean(),
+    survived: z.boolean(),
+    died: z.boolean(),
+  }),
 });
 
 export const settlementSummarySchema = z.object({
@@ -129,6 +151,11 @@ export const settlementSummarySchema = z.object({
   homeRepairGained: z.number().min(0).max(100),
   homeRepairAfter: z.number().min(0).max(100),
   survivalLost: z.number().int().min(0),
+  waterGuestDeployed: z.boolean(),
+  waterGuestSurvived: z.boolean(),
+  waterGuestDied: z.boolean(),
+  xiangxianBonusApplied: z.boolean(),
+  homeRepairMilestone: z.union([z.literal(33), z.literal(66), z.literal(99)]).nullable(),
 });
 
 export const gameSnapshotSchema = z.object({
@@ -137,8 +164,7 @@ export const gameSnapshotSchema = z.object({
   state: gameStateSchema,
   board: z.array(pieceSchema),
   shop: shopStateSchema,
-  support: z.array(supportUnitSchema).length(2),
-  battle: z
+      battle: z
     .object({
       tick: z.number().int().min(0),
       elapsedMs: z.number().min(0),
@@ -147,6 +173,20 @@ export const gameSnapshotSchema = z.object({
       events: z.array(battleEventSchema),
       cooldowns: z.record(z.string(), z.number()).optional(),
       finished: z.boolean().optional(),
+      waterGuest: z.object({
+        pieceId: z.string().nullable(),
+        deployed: z.boolean(),
+        survived: z.boolean(),
+        died: z.boolean(),
+      }),
+      tulouBuffs: z
+        .object({
+          tier: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+          shieldHp: z.record(z.string(), z.number()),
+          cheatDeathAvailable: z.array(z.string()),
+          invincibleUntil: z.record(z.string(), z.number()),
+        })
+        .optional(),
     })
     .nullable()
     .optional(),

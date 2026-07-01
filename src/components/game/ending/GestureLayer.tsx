@@ -12,6 +12,8 @@ type GestureLayerProps = {
   onSlowTime: () => void;
   gestureMode: GestureMode;
   disabled?: boolean;
+  /** Label on envelope buttons — 批 / 信 / 碎片 */
+  fragmentLabel?: string;
 };
 
 const SWIPE_THRESHOLD = 48;
@@ -23,6 +25,7 @@ export function GestureLayer({
   onSlowTime,
   gestureMode,
   disabled = false,
+  fragmentLabel = "批",
 }: GestureLayerProps) {
   const startX = useRef<number | null>(null);
   const [hint, setHint] = useState<string>(
@@ -91,7 +94,7 @@ export function GestureLayer({
               )}
               aria-label={caught ? `第 ${index + 1} 封已接住` : `接住第 ${index + 1} 封客批`}
             >
-              批
+              {fragmentLabel}
             </button>
           );
         })}

@@ -37,6 +37,58 @@ describe("snapshot storage", () => {
     expect(hasSavedSnapshot()).toBe(false);
     expect(loadSnapshot()).toBeNull();
   });
+
+  it("loads ending-phase snapshots with endingType", () => {
+    const ending = {
+      ...createInitialSnapshot(),
+      phase: "ending" as const,
+      state: {
+        ...createInitialSnapshot().state,
+        stage: 4,
+        kebi: 4,
+        result: "win" as const,
+        endingType: "perfect_homecoming" as const,
+      },
+    };
+    saveSnapshot(ending);
+    const loaded = loadSnapshot();
+    expect(loaded?.phase).toBe("ending");
+    expect(loaded?.state.endingType).toBe("perfect_homecoming");
+  });
+
+  it("parses injected E2E storm snapshot shape", () => {
+    const raw = {
+      version: 2,
+      phase: "ending",
+      state: {
+        stage: 2,
+        totalStages: 4,
+        survival: 0,
+        kebi: 1,
+        kebiThreshold: 4,
+        sangzi: 0,
+        homeRepair: 0,
+        homeRepairTier: 0,
+        gold: 10,
+        population: 3,
+        winStreak: 0,
+        loseStreak: 2,
+        pawnedKebi: 0,
+        result: "lose",
+        endingType: "storm_rescue",
+      },
+      board: [],
+      shop: {
+        slots: ["farmer", "guard", "teacher", "fengshui", "patriarch"],
+        refreshCost: 1,
+      },
+    };
+    const result = gameSnapshotSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    expect(loadSnapshot()).toBeNull();
+    window.localStorage.setItem(STORAGE_KEYS.snapshot, JSON.stringify(raw));
+    expect(loadSnapshot()?.state.endingType).toBe("storm_rescue");
+  });
 });
 
 describe("requestDigitalLetter", () => {

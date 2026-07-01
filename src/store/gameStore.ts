@@ -16,6 +16,7 @@ type GameStore = {
   endBattle: () => void;
   applyHomeRepair: () => boolean;
   advanceStage: () => void;
+  pawnKebi: () => boolean;
   resetGame: () => void;
   replaceSnapshot: (snapshot: GameSnapshot) => void;
 };
@@ -98,6 +99,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ selectedPieceId: null });
     }
   },
+
+  pawnKebi: () => apply(set, get, { type: "PAWN_KEBI" }),
 
   resetGame: () => {
     const next = createInitialSnapshot();

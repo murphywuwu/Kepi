@@ -1,22 +1,26 @@
 import type { TulouVisualStage } from "./types";
 
-/** Balance tables — Phase 2. Aligned with PRD V1.6 §6. */
+/** Balance tables — V2.0 micro-run (4 stages, ~10 min). */
 export const BALANCE = {
-  snapshotVersion: 1,
+  snapshotVersion: 2,
 
   initial: {
     stage: 1,
-    totalStages: 6,
+    totalStages: 4,
     survival: 2,
     kebi: 0,
-    kebiThreshold: 5,
+    kebiThreshold: 4,
     sangzi: 0,
     homeRepair: 0,
+    homeRepairTier: 0 as const,
     gold: 10,
     population: 3,
     winStreak: 0,
     loseStreak: 0,
+    pawnedKebi: 0,
+    roundPawnCount: 0,
     result: null,
+    endingType: null,
   },
 
   population: {
@@ -26,11 +30,10 @@ export const BALANCE = {
 
   economy: {
     roundWage: 5,
-    interestPerTenGold: 1,
-    maxInterest: 5,
-    shopRefreshCost: 2,
+    shopRefreshCost: 1,
     shopSlotCount: 5,
-    streakBonuses: { 2: 1, 3: 2, 4: 3 } as const,
+    /** Gold granted when pawning one letter (kebi) in prep. */
+    pawnGold: 15,
   },
 
   battle: {
@@ -46,19 +49,24 @@ export const BALANCE = {
   },
 
   progression: {
-    sangziPerWin: 1,
-    homeRepairPerWin: 16,
+    sangziPerWin: 20,
+    /** Base 1:1 sangzi→repair;乡贤在场时用 xiangxianRepairBonus 倍率 */
+    homeRepairPerWin: 20,
     starHpAtkMultiplier: 2,
+    /** 乡贤在场时桑梓→修复转化率 +50% */
+    xiangxianRepairBonus: 1.5,
+  },
+
+  tulouBuff: {
+    shieldRatio: 0.2,
+    atkSpeedBonus: 0.15,
+    cheatDeathInvincibleMs: 1500,
+    milestones: [33, 66, 99] as const,
   },
 
   clanSynergy: {
     thresholds: [2, 3, 4] as const,
     atkBonus: [0.1, 0.2, 0.3] as const,
-  },
-
-  farmerSkill: {
-    goldPerProc: 1,
-    roundCooldown: 2,
   },
 
   teacherSkill: {
@@ -127,11 +135,12 @@ export const TULOU_VISUAL_STAGES: readonly TulouVisualStage[] = [
   },
 ] as const;
 
-export function streakBonus(winStreak: number, loseStreak: number): number {
-  const streak = Math.max(winStreak, loseStreak);
-  if (streak >= 4) return BALANCE.economy.streakBonuses[4];
-  if (streak === 3) return BALANCE.economy.streakBonuses[3];
-  if (streak === 2) return BALANCE.economy.streakBonuses[2];
+/** V2.0 combat buff tiers — 33% / 66% / 99% milestones. */
+export function homeRepairTierFromRepair(homeRepair: number): 0 | 1 | 2 | 3 {
+  const r = Math.max(0, Math.min(100, homeRepair));
+  if (r >= 99) return 3;
+  if (r >= 66) return 2;
+  if (r >= 33) return 1;
   return 0;
 }
 

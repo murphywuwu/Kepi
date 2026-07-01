@@ -8,12 +8,10 @@ import {
   PIECES,
   PIECE_TYPES,
   STAGES,
-  SUPPORT_UNITS,
   enemyCount,
   pickDigitalLetterFallback,
   scaledEnemyStats,
   stageScalingFactor,
-  streakBonus,
 } from "@/data";
 import { calcDamage, spawnEnemiesForStage } from "@/engine/battle";
 import { createPiece } from "@/engine/shop";
@@ -24,29 +22,30 @@ import {
   enemyDefinitionSchema,
   pieceDefinitionSchema,
   stageDefinitionSchema,
-  supportDefinitionSchema,
 } from "@/lib/schemas";
 
 describe("static data schemas", () => {
-  it("validates balance against PRD initial values", () => {
+  it("validates balance against V2.0 initial values", () => {
     expect(() => balanceSchema.parse(BALANCE)).not.toThrow();
     expect(BALANCE.initial.survival).toBe(2);
-    expect(BALANCE.initial.kebiThreshold).toBe(5);
+    expect(BALANCE.initial.totalStages).toBe(4);
+    expect(BALANCE.initial.kebiThreshold).toBe(4);
     expect(BALANCE.initial.gold).toBe(10);
     expect(BALANCE.initial.population).toBe(3);
+    expect(BALANCE.initial.pawnedKebi).toBe(0);
+    expect(BALANCE.initial.homeRepairTier).toBe(0);
   });
 
   it("validates all piece definitions", () => {
     for (const piece of Object.values(PIECES)) {
       expect(() => pieceDefinitionSchema.parse(piece)).not.toThrow();
     }
-    expect(PIECE_TYPES).toHaveLength(5);
+    expect(PIECE_TYPES).toHaveLength(7);
   });
 
-  it("validates support unit definitions", () => {
-    for (const unit of Object.values(SUPPORT_UNITS)) {
-      expect(() => supportDefinitionSchema.parse(unit)).not.toThrow();
-    }
+  it("includes shuike and xiangxian as recruitable pieces", () => {
+    expect(PIECE_TYPES).toContain("shuike");
+    expect(PIECE_TYPES).toContain("xiangxian");
   });
 
   it("validates all enemy definitions", () => {
@@ -56,17 +55,21 @@ describe("static data schemas", () => {
     expect(ENEMY_TYPES).toHaveLength(6);
   });
 
-  it("validates six stage definitions with scaling curve", () => {
-    expect(STAGES).toHaveLength(6);
+  it("validates four stage definitions with scaling curve", () => {
+    expect(STAGES).toHaveLength(4);
     for (const stage of STAGES) {
       expect(() => stageDefinitionSchema.parse(stage)).not.toThrow();
     }
     expect(stageScalingFactor(1)).toBe(1);
+    expect(stageScalingFactor(2)).toBe(1.5);
     expect(stageScalingFactor(3)).toBe(1.5);
-    expect(stageScalingFactor(6)).toBe(2);
+    expect(stageScalingFactor(4)).toBe(2);
     expect(enemyCount(1)).toBe(3);
-    expect(enemyCount(4)).toBe(4);
-    expect(enemyCount(6)).toBe(5);
+    expect(enemyCount(2)).toBe(4);
+    expect(enemyCount(3)).toBe(4);
+    expect(enemyCount(4)).toBe(5);
+    expect(STAGES[0]?.enemyPool).toEqual(["qianhaibei", "luyinguanli"]);
+    expect(STAGES[3]?.enemyPool).toContain("xiedouhuo");
     expect(STAGES[0]?.boardAsset).toBe("/images/board/kepi_tulou-stage1-broken.png");
     expect(STAGES[1]?.boardAsset).toBe("/images/board/kepi_tulou-stage2-well.png");
   });
@@ -101,10 +104,13 @@ describe("static data engine consumption", () => {
     const base = scaledEnemyStats(stage1[0]!.type, 1).hp;
     expect(stage1[0]?.hp).toBe(Math.max(1, Math.round(base * BALANCE.battle.enemyHpFactor)));
 
-    const stage6 = spawnEnemiesForStage(6);
-    expect(stage6).toHaveLength(5);
+    const stage4 = spawnEnemiesForStage(4);
+    expect(stage4).toHaveLength(5);
+    expect(stage4.some((enemy) => enemy.type === "xiedouhuo")).toBe(true);
     const scaled = scaledEnemyStats("qianhaibei", 2).hp;
-    expect(stage6[0]?.hp).toBe(Math.max(1, Math.round(scaled * BALANCE.battle.enemyHpFactor)));
+    expect(stage4.find((enemy) => enemy.type === "qianhaibei")?.hp).toBe(
+      Math.max(1, Math.round(scaled * BALANCE.battle.enemyHpFactor)),
+    );
   });
 
   it("uses PRD damage formula with battle multiplier", () => {
@@ -112,9 +118,10 @@ describe("static data engine consumption", () => {
     expect(calcDamage(35, 10)).toBeCloseTo(raw * BALANCE.battle.damageMultiplier, 2);
   });
 
-  it("exposes economy streak bonuses from balance table", () => {
-    expect(streakBonus(2, 0)).toBe(1);
-    expect(streakBonus(0, 4)).toBe(3);
+  it("uses V2.0 fixed round wage without streak bonuses", () => {
+    expect(BALANCE.economy.roundWage).toBe(5);
+    expect(BALANCE.economy.shopRefreshCost).toBe(1);
+    expect(BALANCE.economy.pawnGold).toBe(15);
   });
 
   it("provides deterministic AI fallback letters", () => {

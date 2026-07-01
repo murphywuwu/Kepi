@@ -14,6 +14,6 @@ export function combatUnitsFromSnapshot(
     phase === "prep" || phase === "battle" || phase === "settlement";
   return {
     allies: board,
-    enemies: showEnemies ? spawnEnemiesForStage(state.stage) : [],
+    enemies: showEnemies ? spawnEnemiesForStage(state.stage, board) : [],
   };
 }

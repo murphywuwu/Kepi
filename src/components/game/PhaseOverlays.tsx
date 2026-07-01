@@ -4,10 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ASSET_MANIFEST } from "@/data/assets";
 import { useBattleTicker } from "@/components/game/useBattleTicker";
 import { homeRepairStageLabel } from "@/lib/game/assets";
+import {
+  milestoneLabel,
+  playTulouMilestoneSfx,
+  prepFxKindForMilestone,
+} from "@/lib/game/tulouMilestone";
+import { buildTurnNarrativeInput } from "@/lib/ai/buildTurnNarrativeInput";
 import { useFxStore } from "@/store/fxStore";
 import { useGameStore } from "@/store/gameStore";
-import type { GameState, SettlementSummary } from "@/types";
+import type { GameSnapshot, GameState, SettlementSummary } from "@/types";
+import { cn } from "@/lib/utils";
 import { GameIcon, WoodButton, WoodPanel } from "@/components/game/ui";
+import { SettlementNarrative } from "@/components/game/SettlementNarrative";
+import { TulouMilestoneOverlay } from "@/components/game/TulouMilestoneOverlay";
+import type { HomeRepairMilestone } from "@/types";
 
 const UI = ASSET_MANIFEST.ui;
 
@@ -40,21 +50,31 @@ export function SettlementOverlay() {
   const won = lastBattleResult?.won ?? false;
   const settlementKey =
     phase === "settlement" && settlement
-      ? `${won}:${state.stage}:${state.kebi}:${settlement.homeRepairAfter}`
+      ? `${won}:${state.stage}:${state.kebi}:${settlement.homeRepairAfter}:${state.roundPawnCount}:${settlement.waterGuestDied}:${settlement.waterGuestSurvived}`
       : "";
+
+  const narrativeInput = useMemo(() => {
+    if (phase !== "settlement") return null;
+    return buildTurnNarrativeInput(snapshot);
+    // settlementKey captures all narrative-relevant settlement fields
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settlementKey]);
 
   if (phase !== "settlement") return null;
 
   const repairLabel = homeRepairStageLabel(state.homeRepair);
 
-  if (won && settlement) {
+  if (won && settlement && settlement.kebiGained > 0) {
     return (
       <WonSettlementOverlay
         key={settlementKey}
+        snapshot={snapshot}
         state={state}
         settlement={settlement}
         repairLabel={repairLabel}
         advanceStage={advanceStage}
+        narrativeKey={settlementKey}
+        narrativeInput={narrativeInput}
       />
     );
   }
@@ -62,28 +82,40 @@ export function SettlementOverlay() {
   return (
     <SettlementSummaryCard
       won={won}
+      snapshot={snapshot}
       state={state}
       settlement={settlement}
       repairLabel={repairLabel}
       advanceStage={advanceStage}
+      narrativeKey={settlementKey}
+      narrativeInput={narrativeInput}
     />
   );
 }
 
 function WonSettlementOverlay({
+  snapshot,
   state,
   settlement,
   repairLabel,
   advanceStage,
+  narrativeKey,
+  narrativeInput,
 }: {
+  snapshot: GameSnapshot;
   state: GameState;
   settlement: SettlementSummary;
   repairLabel: string;
   advanceStage: () => void;
+  narrativeKey: string;
+  narrativeInput: import("@/lib/ai/types").TurnNarrativeInput | null;
 }) {
   const applyHomeRepair = useGameStore((store) => store.applyHomeRepair);
   const pushPrepFx = useFxStore((store) => store.pushPrepFx);
   const [showSummary, setShowSummary] = useState(false);
+  const [milestoneFlash, setMilestoneFlash] = useState<HomeRepairMilestone | null>(
+    null,
+  );
   const repairAppliedRef = useRef(false);
 
   const commitHomeRepair = useCallback(() => {
@@ -97,7 +129,18 @@ function WonSettlementOverlay({
       yRatio: 0.46,
       durationMs: 1800,
     });
-  }, [applyHomeRepair, pushPrepFx]);
+    const milestone = settlement.homeRepairMilestone;
+    if (milestone) {
+      setMilestoneFlash(milestone);
+      pushPrepFx({
+        kind: prepFxKindForMilestone(milestone),
+        xRatio: 0.5,
+        yRatio: 0.46,
+        durationMs: milestone === 99 ? 2600 : 2200,
+      });
+      playTulouMilestoneSfx(milestone);
+    }
+  }, [applyHomeRepair, pushPrepFx, settlement.homeRepairMilestone]);
 
   const finishCinematic = useCallback(() => {
     commitHomeRepair();
@@ -106,37 +149,88 @@ function WonSettlementOverlay({
 
   if (!showSummary) {
     return (
-      <VictoryCinematic
-        settlement={settlement}
-        onRepairShot={commitHomeRepair}
-        onComplete={finishCinematic}
-      />
+      <>
+        {milestoneFlash ? (
+          <TulouMilestoneOverlay
+            milestone={milestoneFlash}
+            onDone={() => setMilestoneFlash(null)}
+          />
+        ) : null}
+        <VictoryCinematic
+          settlement={settlement}
+          onRepairShot={commitHomeRepair}
+          onComplete={finishCinematic}
+        />
+      </>
     );
   }
 
   return (
-    <SettlementSummaryCard
-      won
-      state={state}
-      settlement={settlement}
-      repairLabel={repairLabel}
-      advanceStage={advanceStage}
-    />
+    <>
+      {milestoneFlash ? (
+        <TulouMilestoneOverlay
+          milestone={milestoneFlash}
+          onDone={() => setMilestoneFlash(null)}
+        />
+      ) : null}
+      <SettlementSummaryCard
+        won
+        snapshot={snapshot}
+        state={state}
+        settlement={settlement}
+        repairLabel={repairLabel}
+        advanceStage={advanceStage}
+        narrativeKey={narrativeKey}
+        narrativeInput={narrativeInput}
+      />
+    </>
   );
+}
+
+function settlementHeadline(won: boolean, settlement?: SettlementSummary | null): string {
+  if (!won) return "本关失利";
+  if (settlement?.kebiGained && settlement.kebiGained > 0) return "本关胜利";
+  if (settlement?.waterGuestDied) return "胜利，但信丢了";
+  return "胜利，但未收信";
+}
+
+function settlementSubtitle(
+  won: boolean,
+  survival: number,
+  settlement?: SettlementSummary | null,
+): string {
+  if (!won) {
+    return survival > 0
+      ? "客批未能送达，存续度 -1，调整阵容后再战"
+      : "存续度归零";
+  }
+  if (settlement?.kebiGained && settlement.kebiGained > 0) {
+    return "一封信回家，桑梓随信而归";
+  }
+  if (settlement?.waterGuestDied) {
+    return "寨子守住了，可信沉在了风里。水客没能把信带回来。";
+  }
+  return "胜局成立，但水客未上场或未能护信，本回合无客批与桑梓。";
 }
 
 function SettlementSummaryCard({
   won,
+  snapshot,
   state,
   settlement,
   repairLabel,
   advanceStage,
+  narrativeKey,
+  narrativeInput,
 }: {
   won: boolean;
+  snapshot: GameSnapshot;
   state: GameState;
   settlement?: SettlementSummary | null;
   repairLabel: string;
   advanceStage: () => void;
+  narrativeKey: string;
+  narrativeInput: import("@/lib/ai/types").TurnNarrativeInput | null;
 }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4">
@@ -146,23 +240,27 @@ function SettlementSummaryCard({
         innerClassName="p-5"
       >
         <h2 className="text-center text-lg font-bold text-kepi-ink">
-          {won ? "本关胜利" : "本关失利"}
+          {settlementHeadline(won, settlement)}
         </h2>
         <p className="mt-1 text-center text-xs text-kepi-ink-muted">
-          {won
-            ? "一封信回家，桑梓随信而归"
-            : state.survival > 0
-              ? "客批未能送达，存续度 -1，调整阵容后再战"
-              : "存续度归零"}
+          {settlementSubtitle(won, state.survival, settlement)}
         </p>
+
+        {settlement ? <SettlementOutcomeRow settlement={settlement} state={state} /> : null}
 
         <div className="kepi-wood-divider my-4" />
 
-        {won && settlement ? (
+        {won && settlement && settlement.kebiGained > 0 ? (
           <SettlementRelay settlement={settlement} repairLabel={repairLabel} />
+        ) : won && settlement ? (
+          <WinNoLetterSummary settlement={settlement} />
         ) : (
           <LossSummary survival={state.survival} />
         )}
+
+        <div className="kepi-wood-divider my-4" />
+
+        <SettlementNarrative input={narrativeInput} cacheKey={narrativeKey} />
 
         <div className="kepi-wood-divider my-4" />
 
@@ -374,7 +472,9 @@ function SettlementRelay({
     {
       icon: UI.homeRepair,
       actor: "土楼",
-      line: `家园修复 +${settlement.homeRepairGained}% · ${repairLabel}`,
+      line: settlement.homeRepairMilestone
+        ? `${milestoneLabel(settlement.homeRepairMilestone)} · +${settlement.homeRepairGained}%`
+        : `家园修复 +${settlement.homeRepairGained}% · ${repairLabel}`,
     },
   ];
 
@@ -400,6 +500,27 @@ function SettlementRelay({
   );
 }
 
+function WinNoLetterSummary({ settlement }: { settlement: SettlementSummary }) {
+  return (
+    <div className="rounded-md border border-amber-900/25 bg-amber-950/10 p-3 text-sm text-kepi-ink">
+      <p className="font-semibold">本回合收益为空</p>
+      <ul className="mt-2 space-y-1 text-xs text-kepi-ink-muted">
+        <li>客批 +0（须水客存活才收信）</li>
+        <li>桑梓 +0 · 家园修复 +0%</li>
+        <li>
+          水客状态：
+          {settlement.waterGuestDied
+            ? " 战死"
+            : settlement.waterGuestDeployed
+              ? " 未存活"
+              : " 未上场"}
+        </li>
+        <li>存续度不变（胜利不扣寨子血量）</li>
+      </ul>
+    </div>
+  );
+}
+
 function LossSummary({ survival }: { survival: number }) {
   return (
     <div className="rounded-md border border-red-900/20 bg-red-950/10 p-3 text-sm text-kepi-ink">
@@ -407,6 +528,50 @@ function LossSummary({ survival }: { survival: number }) {
       <p className="mt-1 text-xs text-kepi-ink-muted">
         客批不增加，桑梓不产生，家园修复保持不变。当前存续度 {survival}。
       </p>
+    </div>
+  );
+}
+
+function SettlementOutcomeRow({
+  settlement,
+  state,
+}: {
+  settlement: SettlementSummary;
+  state: GameState;
+}) {
+  const waterGuestLabel = settlement.waterGuestDied
+    ? "水客战死"
+    : settlement.waterGuestSurvived
+      ? "水客护信成功"
+      : settlement.waterGuestDeployed
+        ? "水客未存活"
+        : "水客未上场";
+
+  return (
+    <div className="mt-3 flex flex-wrap justify-center gap-2 text-[0.625rem]">
+      <span
+        className={cn(
+          "rounded-full border px-2 py-0.5",
+          settlement.won
+            ? "border-emerald-900/25 bg-emerald-950/15 text-emerald-100"
+            : "border-red-900/25 bg-red-950/15 text-red-100",
+        )}
+      >
+        {settlement.won ? "胜" : "负"}
+      </span>
+      <span className="rounded-full border border-amber-900/25 bg-amber-950/15 px-2 py-0.5 text-amber-100">
+        {waterGuestLabel}
+      </span>
+      {state.roundPawnCount > 0 ? (
+        <span className="rounded-full border border-rose-900/25 bg-rose-950/15 px-2 py-0.5 text-rose-100">
+          本回合典当 {state.roundPawnCount} 封
+        </span>
+      ) : null}
+      {settlement.xiangxianBonusApplied ? (
+        <span className="rounded-full border border-sky-900/25 bg-sky-950/15 px-2 py-0.5 text-sky-100">
+          乡贤修缮 +50%
+        </span>
+      ) : null}
     </div>
   );
 }

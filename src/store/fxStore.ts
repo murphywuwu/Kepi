@@ -6,7 +6,11 @@ export type PrepFxKind =
   | "letter_pickup"
   | "repair_home"
   | "buy_piece"
-  | "population_up";
+  | "population_up"
+  | "pawn_kebi"
+  | "tulou_well"
+  | "tulou_wall"
+  | "tulou_lantern";
 
 export type PrepFx = {
   id: string;

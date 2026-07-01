@@ -8,6 +8,13 @@ import {
   NEUTRAL_ROWS,
   zoneRowBounds,
 } from "@/lib/game/boardLayout";
+import {
+  drawAssassinWarningRing,
+  drawPlacementHintRing,
+  hasAssassinThreat,
+  prepPlacementHints,
+  shuikeAssassinWarningPosition,
+} from "@/lib/game/placementHints";
 import type { BoardPosition } from "@/types";
 import type { CanvasRenderState, CanvasTheme } from "./types";
 
@@ -31,6 +38,7 @@ export function renderBoardLayer(
   if (showZones) {
     drawEnemyPlacementSlots(ctx, state, theme);
     drawAllyPlacementSlots(ctx, state, theme);
+    drawPrepPlacementHints(ctx, state);
   }
 
   if (state.phase === "prep" && state.hoveredAllyCell) {
@@ -120,6 +128,27 @@ function drawAllyPlacementSlots(
 
     ctx.restore();
   }
+}
+
+function drawPrepPlacementHints(
+  ctx: CanvasRenderingContext2D,
+  state: CanvasRenderState,
+): void {
+  const pulse = 0.38 + 0.22 * Math.sin(state.timeMs * 0.005);
+  const hints = prepPlacementHints(state.allies, state.stage);
+  const seen = new Set<string>();
+
+  for (const hint of hints) {
+    const key = `${hint.cell.x},${hint.cell.y}:${hint.kind}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    drawPlacementHintRing(ctx, hint.cell, state.metrics, hint.kind, pulse);
+  }
+
+  if (!hasAssassinThreat(state.stage)) return;
+  const shuikePos = shuikeAssassinWarningPosition(state.allies);
+  if (!shuikePos) return;
+  drawAssassinWarningRing(ctx, shuikePos, state.metrics, state.timeMs);
 }
 
 function drawHoveredAllyCell(
