@@ -45,6 +45,8 @@ tests/e2e/      # Playwright 测试
 
 ## 文档
 
+- [产品需求文档（PRD V3.1）](docs/kepi_PRD_V3.1.md)
+- [产品需求文档（PRD V2.0）](docs/kepi_PRD_V2.0.md)
 - [产品需求文档（PRD V1.6）](docs/kepi_PRD_V1.6.md)
 - [数据结构清单 v1](docs/kepi_data-structures_v1.md)
 - [架构与技术栈方案 v1](docs/kepi_architecture-and-tech-stack_v1.md)
