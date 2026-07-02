@@ -143,7 +143,7 @@ function CampfireCinematic({
 
       <CampfireGlowLayer mode={glowMode} beat={beat} />
 
-      <div className="kepi-campfire-stage">
+      <div className="kepi-campfire-stage relative z-10">
         <div className="kepi-campfire-stage__content">
           {beat === "opening" ? (
             <CampfireOpening
@@ -199,7 +199,7 @@ function CampfireBackdrop({
   }, [src]);
 
   return (
-    <div className="kepi-campfire-vignette absolute inset-0" aria-hidden>
+    <div className="kepi-campfire-vignette pointer-events-none absolute inset-0 z-0" aria-hidden>
       <Image
         src={currentSrc}
         alt=""
@@ -231,7 +231,7 @@ function CampfireGlowLayer({
   return (
     <div
       className={cn(
-        "kepi-campfire-glow absolute inset-x-0 bottom-0 top-[58%] sm:top-[52%]",
+        "kepi-campfire-glow pointer-events-none absolute inset-x-0 bottom-0 top-[58%] z-[1] sm:top-[52%]",
         subtleOnly && "kepi-campfire-glow--opening",
         mode === "subtle" && "kepi-campfire-glow--subtle",
       )}
