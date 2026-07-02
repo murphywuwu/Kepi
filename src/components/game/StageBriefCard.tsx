@@ -255,11 +255,12 @@ function ClassicStageBrief({
       </div>
 
       <div className="mt-5 flex items-start gap-4">
-        <div className="kepi-prep-enemy-portrait relative shrink-0 overflow-hidden rounded-md border border-amber-200/20 bg-black/20">
-          <GameIcon
+        <div className="kepi-prep-enemy-portrait relative h-[8.75rem] w-[6.75rem] shrink-0 overflow-hidden rounded-md border border-amber-200/20 bg-black/24">
+          <img
             src={enemy.portrait}
-            size={72}
-            className="h-[4.5rem] w-[4.5rem] object-cover object-bottom"
+            alt={ENEMIES[brief.featuredEnemy].name}
+            className="absolute inset-x-0 bottom-0.5 mx-auto block h-auto max-h-[calc(100%-0.125rem)] w-auto max-w-full object-contain object-bottom drop-shadow-[0_6px_10px_rgba(0,0,0,0.28)]"
+            draggable={false}
           />
         </div>
         <div className="min-w-0 flex-1">
