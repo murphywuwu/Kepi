@@ -33,6 +33,12 @@ export function isShuikePlacedOnBackRow(board: Piece[]): boolean {
   );
 }
 
+export function resolvePrepGuideStep(board: Piece[]): PrepGuideStep {
+  if (isShuikePlacedOnBackRow(board)) return 3;
+  if (hasShuikeOnBoard(board)) return 2;
+  return 1;
+}
+
 /** Advance guide step from board state; returns next step or unchanged. */
 export function nextPrepGuideStepFromBoard(
   step: PrepGuideStep,

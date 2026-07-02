@@ -17,7 +17,7 @@ test("campfire choice advances to battle prep", async ({ page }) => {
     timeout: 10_000,
   });
 
-  await page.getByRole("button", { name: "进入备战" }).click();
+  await page.getByRole("button", { name: "进入备战，护住水客" }).click();
 
   await expect(page.getByText("首战斗引导")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("备军图")).toBeVisible();

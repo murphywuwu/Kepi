@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
 import { shouldShowStageBrief } from "@/lib/game/prepUi";
-import type { PrepGuideStep } from "@/lib/game/prepGuide";
-import { PREP_GUIDE_NODE_ID } from "@/lib/game/prepGuide";
+import { PREP_GUIDE_NODE_ID, resolvePrepGuideStep, type PrepGuideStep } from "@/lib/game/prepGuide";
+import type { Piece } from "@/types";
 import type { PrepSubview } from "@/lib/game/prepUi";
 import type { UnitInspectInfo } from "@/lib/game/unitInspect";
 
@@ -46,8 +46,8 @@ type UIStore = {
   prepSubview: PrepSubview;
   seenStageBriefNodeIds: string[];
   prepGuideStep: PrepGuideStep;
-  enterPrepNode: (nodeId: string) => void;
-  dismissStageBrief: (nodeId: string) => void;
+  enterPrepNode: (nodeId: string, board?: Piece[]) => void;
+  dismissStageBrief: (nodeId: string, board?: Piece[]) => void;
   skipPrepGuide: () => void;
   markPrepGuideDone: () => void;
   setPrepGuideStep: (step: PrepGuideStep) => void;
@@ -93,31 +93,43 @@ export const useUIStore = create<UIStore>((set, get) => ({
   seenStageBriefNodeIds: [],
   prepGuideStep: 1,
 
-  enterPrepNode: (nodeId) => {
+  enterPrepNode: (nodeId, board = []) => {
     const seen = new Set(get().seenStageBriefNodeIds);
     if (shouldShowStageBrief(nodeId, seen)) {
       set({ prepSubview: "stage_brief", supportPopoverOpen: false });
       return;
     }
     const guideStep = get().prepGuideStep;
+    const nextGuideStep =
+      nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done"
+        ? resolvePrepGuideStep(board)
+        : guideStep;
     set({
       prepSubview: "active",
-      prepGuideStep:
-        nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done" ? 1 : guideStep,
-      prepDockExpanded: nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done",
+      prepGuideStep: nextGuideStep,
+      prepDockExpanded:
+        nodeId === PREP_GUIDE_NODE_ID &&
+        nextGuideStep !== "done" &&
+        nextGuideStep === 1,
     });
   },
 
-  dismissStageBrief: (nodeId) => {
+  dismissStageBrief: (nodeId, board = []) => {
     const seen = get().seenStageBriefNodeIds;
     const nextSeen = seen.includes(nodeId) ? seen : [...seen, nodeId];
     const guideStep = get().prepGuideStep;
+    const nextGuideStep =
+      nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done"
+        ? resolvePrepGuideStep(board)
+        : guideStep;
     set({
       prepSubview: "active",
       seenStageBriefNodeIds: nextSeen,
-      prepGuideStep:
-        nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done" ? 1 : guideStep,
-      prepDockExpanded: nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done",
+      prepGuideStep: nextGuideStep,
+      prepDockExpanded:
+        nodeId === PREP_GUIDE_NODE_ID &&
+        nextGuideStep !== "done" &&
+        nextGuideStep === 1,
     });
   },
 

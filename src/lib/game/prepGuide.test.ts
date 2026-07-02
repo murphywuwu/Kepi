@@ -3,6 +3,7 @@ import {
   hasShuikeOnBoard,
   isShuikePlacedOnBackRow,
   nextPrepGuideStepFromBoard,
+  resolvePrepGuideStep,
 } from "./prepGuide";
 import type { Piece } from "@/types";
 
@@ -33,6 +34,12 @@ describe("prepGuide", () => {
 
   it("advances from place to start when shuike is on back row", () => {
     expect(nextPrepGuideStepFromBoard(2, [shuikeBack])).toBe(3);
+  });
+
+  it("resolves initial guide step from board when entering battle-2", () => {
+    expect(resolvePrepGuideStep([])).toBe(1);
+    expect(resolvePrepGuideStep([shuikeBench])).toBe(2);
+    expect(resolvePrepGuideStep([shuikeBack])).toBe(3);
   });
 
   it("detects shuike placement on back row", () => {

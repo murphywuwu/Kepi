@@ -9,6 +9,21 @@ export type LevelTone =
   | "harbor"
   | "fire";
 
+export type StageBriefSupportCard = {
+  title: string;
+  hint: string;
+  primaryNote: string;
+  secondaryNote: string;
+};
+
+export type StageBriefSupportFocus = {
+  dismissCta: string;
+  footnote: string;
+  enemyLine: string;
+  shuike: StageBriefSupportCard;
+  xiangyin: StageBriefSupportCard;
+};
+
 export type LevelInteractionDefinition = {
   nodeId: string;
   level: number;
@@ -16,6 +31,8 @@ export type LevelInteractionDefinition = {
   shortTitle: string;
   tone: LevelTone;
   tagline: string;
+  /** Dual-card player brief for early tutorial battles. */
+  stageBrief?: StageBriefSupportFocus;
   historicalFocus: string;
   featuredEnemy: EnemyType;
   enemyComposition: readonly EnemyType[];
@@ -66,7 +83,25 @@ export const LEVEL_INTERACTIONS: Record<string, LevelInteractionDefinition> = {
     title: "南洋余波",
     shortTitle: "南洋",
     tone: "warm",
-    tagline: "从人情余温中出发。",
+    tagline: "南洋同乡把信交到你手里——归乡路从这里开始。",
+    stageBrief: {
+      dismissCta: "进入备战，护住水客",
+      footnote:
+        "水客负责送客批；乡音符是开战前的增益；乡贤可在商店招募，让桑梓修楼更快（本关可选）。",
+      enemyLine: "劲敌：迁海碑 · 路引关吏",
+      shuike: {
+        title: "水客 · 护信",
+        hint: "后排收信的人。前排替他挡刀。",
+        primaryNote: "水客活着打赢 → 客批 +1、桑梓 +1",
+        secondaryNote: "水客阵亡 → 赢了也收不到信",
+      },
+      xiangyin: {
+        title: "乡音符 · 开局增益",
+        hint: "进入战斗后，音符会飘落——点一下抓住。",
+        primaryNote: "本关效果：祖灵庇佑（点击乡音符获得开局增益）",
+        secondaryNote: "没点到也有弱增益，但最好别漏。",
+      },
+    },
     historicalFocus: "南洋同乡递信托归，归乡路从一封家书开始。",
     featuredEnemy: "qianhaibei",
     enemyComposition: ["qianhaibei", "luyinguanli", "qianhaibei"],
@@ -78,8 +113,8 @@ export const LEVEL_INTERACTIONS: Record<string, LevelInteractionDefinition> = {
     },
     prep: {
       actName: "启程备战",
-      body: "先招募水客并放到后排，让前排棋子替他挡住第一波阻力。",
-      objective: "水客上场并存活，胜利后才会收回客批。",
+      body: "前排挡住第一波阻力，别让敌人冲到后排。",
+      objective: "招募水客并放到后排，胜利且水客存活才有客批。",
       cta: "护信启程",
     },
     mechanic: {
@@ -108,7 +143,25 @@ export const LEVEL_INTERACTIONS: Record<string, LevelInteractionDefinition> = {
     title: "海禁余波",
     shortTitle: "海禁",
     tone: "edict",
-    tagline: "打赢不够，水客活着，信才算到家。",
+    tagline: "朱印封令压境——赢了不算，信要跟人到家。",
+    stageBrief: {
+      dismissCta: "进入备战，护住水客",
+      footnote:
+        "水客负责送客批；乡音符是开战前的增益；乡贤可在商店招募，让桑梓修楼更快（本关可选）。",
+      enemyLine: "劲敌：迁海碑（前排重压）×2 · 路引关吏（侧翼试探）",
+      shuike: {
+        title: "水客 · 护信",
+        hint: "后排收信的人。前排替他挡刀。",
+        primaryNote: "水客活着打赢 → 客批 +1、桑梓 +1",
+        secondaryNote: "水客阵亡 → 赢了也收不到信",
+      },
+      xiangyin: {
+        title: "乡音符 · 开局增益",
+        hint: "进入战斗后，音符会飘落——点一下抓住。",
+        primaryNote: "本关效果：海令护甲（全队护甲 +10%）",
+        secondaryNote: "没点到也有弱增益，但最好别漏。",
+      },
+    },
     historicalFocus: "海禁与迁海令让返乡、通邮与渡海都变成制度阻力。",
     featuredEnemy: "qianhaibei",
     enemyComposition: ["qianhaibei", "qianhaibei", "luyinguanli"],
@@ -120,14 +173,14 @@ export const LEVEL_INTERACTIONS: Record<string, LevelInteractionDefinition> = {
     },
     prep: {
       actName: "备战护信",
-      body: "迁海碑压前，路引关吏试探侧翼。水客必须在后排，前排要替他挡住碑影。",
-      objective: "上阵水客、前排筑墙，胜利且水客存活才有客批。",
+      body: "前排挡住碑影，别让侧翼漏进来。",
+      objective: "确认水客在后排落位，胜利且水客存活才有客批。",
       cta: "开战",
     },
     mechanic: {
       id: "protect_shuike",
       label: "护水客",
-      description: "本关再次强调水客存活产信规则，乱放水客会丢信。",
+      description: "胜利且水客存活才产出客批与桑梓值。",
       battleHint: "碑影压近，前排要拦住路。",
     },
     xiangyinBuff: {
