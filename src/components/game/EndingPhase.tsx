@@ -1,6 +1,7 @@
 "use client";
 
 import { EndingScene } from "@/components/game/ending";
+import { loadSettings } from "@/lib/storage/settings";
 import {
   endingBattleSummaryFromSnapshot,
   endingContextFromSnapshot,
@@ -22,7 +23,7 @@ export function EndingPhase() {
       narrative={narrative}
       stage={state.stage}
       battleSummary={endingBattleSummaryFromSnapshot(snapshot)}
-      gestureMode="pointer"
+      gestureMode={loadSettings().gestureEnabled ? "gesture" : "pointer"}
       onComplete={() => resetGame()}
     />
   );

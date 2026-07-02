@@ -163,6 +163,7 @@ export function EndingScene({
               onCatch={handleCatch}
               onSlowTime={() => setSlowTime(true)}
               gestureMode={gestureMode}
+              burnEnabled={endingType === "storm_rescue"}
               fragmentLabel={fragmentLabel}
             />
             {slowTime ? (

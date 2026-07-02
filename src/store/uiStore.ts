@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import type { GestureCameraStatus } from "@/lib/gesture";
 import type { UnitInspectInfo } from "@/lib/game/unitInspect";
 
 export type DomPieceInspect = {
@@ -44,6 +45,8 @@ type UIStore = {
   setSettingsOpen: (open: boolean) => void;
   hoveredUnit: HoveredUnit | null;
   setHoveredUnit: (unit: HoveredUnit | null) => void;
+  cameraStatus: GestureCameraStatus;
+  setCameraStatus: (status: GestureCameraStatus) => void;
   toasts: ToastMessage[];
   pushToast: (message: string, variant?: ToastVariant) => void;
   dismissToast: (id: string) => void;
@@ -80,6 +83,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   hoveredUnit: null,
   setHoveredUnit: (hoveredUnit) => set({ hoveredUnit }),
+
+  cameraStatus: "idle",
+  setCameraStatus: (cameraStatus) => set({ cameraStatus }),
 
   toasts: [],
   pushToast: (message, variant = "default") => {
