@@ -1,20 +1,19 @@
 import type { GameAction, GameSnapshot } from "@/types";
 import { BALANCE } from "@/data";
-import { defaultAllyPosition } from "@/lib/game/boardLayout";
+import { advanceBattleTick, syncBoardFromBattle } from "./battle";
+import { SNAPSHOT_VERSION } from "./constants";
+import { borrowAgainstReturn, pawnKebi } from "./economy";
+import { advanceJourney, applyCampfireChoice, leavePawnShop } from "./journey/advance";
+import { startJourney } from "./journey";
 import {
-  advanceBattleTick,
-  createBattleSnapshot,
-  syncBoardFromBattle,
-} from "./battle";
-import {
-  INITIAL_GOLD,
-  INITIAL_POPULATION,
-  SNAPSHOT_VERSION,
-} from "./constants";
-import { applyRoundIncome, pawnKebi } from "./economy";
+  beginOpeningBuffPhase,
+  catchOpeningBuff,
+  enterBattleFromOpeningBuff,
+  skipOpeningBuff,
+} from "./openingBuff";
 import {
   applyHomeRepairFromSettlement,
-  resolveProgression,
+  resolveProgressionAfterBattle,
   settleStage,
 } from "./progression";
 import {
@@ -30,6 +29,27 @@ import { canApplyAction, cloneSnapshot, transitionPhase } from "./stateMachine";
 
 export const ENGINE_VERSION = SNAPSHOT_VERSION;
 
+function clearBattleFields(snapshot: GameSnapshot): GameSnapshot {
+  return {
+    ...snapshot,
+    battle: null,
+    lastBattleResult: null,
+    settlement: null,
+    openingBuff: null,
+    activeOpeningBuff: null,
+  };
+}
+
+function afterJourneyAdvance(snapshot: GameSnapshot): GameSnapshot {
+  if (snapshot.phase === "ending") {
+    return clearBattleFields(snapshot);
+  }
+  if (snapshot.phase === "prep") {
+    return recallBoardToBench(rollShop(snapshot));
+  }
+  return snapshot;
+}
+
 export function createInitialSnapshot(): GameSnapshot {
   const base: GameSnapshot = {
     version: SNAPSHOT_VERSION,
@@ -43,9 +63,12 @@ export function createInitialSnapshot(): GameSnapshot {
     battle: null,
     lastBattleResult: null,
     settlement: null,
+    openingBuff: null,
+    activeOpeningBuff: null,
+    campfire: null,
   };
 
-  return rollShop(base);
+  return startJourney(rollShop(base));
 }
 
 export function reduceGameState(
@@ -78,25 +101,20 @@ export function reduceGameState(
     case "PAWN_KEBI":
       return pawnKebi(snapshot);
 
-    case "START_BATTLE": {
-      const board = snapshot.board.map((piece, index) =>
-        piece.position ? piece : { ...piece, position: defaultAllyPosition(index) },
-      );
-      const battle = createBattleSnapshot({
-        stage: snapshot.state.stage,
-        allies: board,
-        homeRepairTier: snapshot.state.homeRepairTier,
-      });
-      return transitionPhase(
-        {
-          ...snapshot,
-          board,
-          battle,
-          lastBattleResult: null,
-          settlement: null,
-        },
-        "battle",
-      );
+    case "BORROW_AGAINST_RETURN":
+      return borrowAgainstReturn(snapshot);
+
+    case "START_BATTLE":
+      return beginOpeningBuffPhase(snapshot);
+
+    case "CATCH_OPENING_BUFF": {
+      const caught = catchOpeningBuff(snapshot);
+      return enterBattleFromOpeningBuff(caught);
+    }
+
+    case "SKIP_OPENING_BUFF": {
+      const skipped = skipOpeningBuff(snapshot);
+      return enterBattleFromOpeningBuff(skipped);
     }
 
     case "BATTLE_TICK": {
@@ -116,38 +134,42 @@ export function reduceGameState(
         return transitionPhase(snapshot, "settlement");
       }
       const board = syncBoardFromBattle(snapshot.board, snapshot.battle);
-      const settled = settleStage(
-        { ...snapshot, board },
-        snapshot.lastBattleResult,
-      );
+      const settled = settleStage({ ...snapshot, board }, snapshot.lastBattleResult);
       return transitionPhase(settled, "settlement");
     }
 
     case "APPLY_HOME_REPAIR":
       return applyHomeRepairFromSettlement(snapshot);
 
-    case "ADVANCE_STAGE": {
-      const won = snapshot.lastBattleResult?.won ?? false;
-      let next = resolveProgression(snapshot);
+    case "ADVANCE_STAGE":
+    case "ADVANCE_JOURNEY": {
+      let next = resolveProgressionAfterBattle(snapshot);
       if (next.phase === "ending") {
-        return { ...next, battle: null, lastBattleResult: null, settlement: null };
+        return clearBattleFields(next);
       }
+
+      const won = snapshot.lastBattleResult?.won ?? false;
       if (won) {
-        next = applyRoundIncome(next);
+        next = advanceJourney(next);
+      } else {
+        next = recallBoardToBench(rollShop(clearBattleFields(next)));
+        next = transitionPhase(
+          {
+            ...next,
+            state: { ...next.state, roundPawnCount: 0, roundBloodDebt: false },
+          },
+          "prep",
+        );
       }
-      next = rollShop(next);
-      next = recallBoardToBench(next);
-      return transitionPhase(
-        {
-          ...next,
-          battle: null,
-          lastBattleResult: null,
-          settlement: null,
-          state: { ...next.state, roundPawnCount: 0 },
-        },
-        "prep",
-      );
+
+      return afterJourneyAdvance(next);
     }
+
+    case "LEAVE_PAWN_SHOP":
+      return afterJourneyAdvance(leavePawnShop(snapshot));
+
+    case "PICK_CAMPFIRE_CHOICE":
+      return afterJourneyAdvance(applyCampfireChoice(snapshot, action.choiceId));
 
     default:
       return snapshot;
@@ -165,13 +187,32 @@ export {
   spawnEnemiesForStage,
   syncBoardFromBattle,
 } from "./battle";
-export { applyRoundIncome, pawnKebi } from "./economy";
+export {
+  applyNodeWage,
+  applyRoundIncome,
+  borrowAgainstReturn,
+  pawnKebi,
+} from "./economy";
+export {
+  advanceJourney,
+  applyCampfireChoice,
+  leavePawnShop,
+} from "./journey/advance";
+export {
+  computeKebiThreshold,
+  currentJourneyNode,
+  enterJourneyNode,
+  isFinalJourneyNode,
+  startJourney,
+  syncKebiThreshold,
+} from "./journey";
 export {
   applyHomeRepairFromSettlement,
   gameResultFromEndingType,
   homeRepairStage,
   resolveEndingType,
   resolveProgression,
+  resolveProgressionAfterBattle,
   settleStage,
 } from "./progression";
 export {

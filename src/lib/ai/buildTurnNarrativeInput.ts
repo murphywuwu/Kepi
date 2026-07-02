@@ -31,6 +31,19 @@ function detectClutchUnit(
   return PIECES[clutch.ally.type]?.name ?? clutch.ally.type;
 }
 
+function detectOutcomeTone(
+  result: BattleResult,
+): "crushing" | "clutch" | "narrow" | undefined {
+  if (!result.won) return undefined;
+  if (result.enemyHpPercent <= 0.05 && result.allyHpPercent >= 0.55) {
+    return "crushing";
+  }
+  if (result.alliesRemaining === 1 || result.allyHpPercent <= 0.35) {
+    return "clutch";
+  }
+  return "narrow";
+}
+
 export function buildTurnNarrativeInput(
   snapshot: GameSnapshot,
 ): TurnNarrativeInput | null {
@@ -38,16 +51,19 @@ export function buildTurnNarrativeInput(
   if (!settlement || !lastBattleResult) return null;
 
   const allies = battle?.allies ?? snapshot.board;
+  const deathCount = Math.max(0, 2 - state.survival);
 
   return {
-    turn: state.stage,
+    turn: state.journeyIndex + 1,
     events: {
       didPawn: state.roundPawnCount > 0,
       pawnCount: state.roundPawnCount,
+      didBloodDebt: state.roundBloodDebt,
       waterGuestDied: settlement.waterGuestDied,
       waterGuestSurvived: settlement.waterGuestSurvived,
       won: settlement.won,
       clutchUnit: detectClutchUnit(lastBattleResult, allies),
+      outcomeTone: detectOutcomeTone(lastBattleResult),
       homeRepairMilestone:
         settlement.homeRepairMilestone ??
         detectHomeRepairMilestone(
@@ -59,5 +75,7 @@ export function buildTurnNarrativeInput(
     currentKebi: state.kebi,
     currentHomeRepair: settlement.homeRepairAfter,
     survival: state.survival,
+    winStreak: state.winStreak,
+    deathCount,
   };
 }

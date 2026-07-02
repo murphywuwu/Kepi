@@ -1099,21 +1099,9 @@
     );
   }
 
-  /* Ending layer — warm sea + ending art, aligned with main scene */
+  /* Ending layer — artwork set per ending type in EndingScene */
   .kepi-ending-scene {
     background-color: var(--kepi-scene);
-    background-image:
-      linear-gradient(
-        180deg,
-        rgba(44, 36, 22, 0.72) 0%,
-        rgba(61, 46, 31, 0.55) 45%,
-        rgba(74, 55, 40, 0.78) 100%
-      ),
-      url("/images/ending/kepi_wind-wave-background.png"),
-      url("/images/ending/kepi_ending-background.png");
-    background-size: cover, cover, cover;
-    background-position: center, center bottom, center;
-    background-repeat: no-repeat;
   }
 
   .kepi-ending-vignette {
@@ -1125,40 +1113,15 @@
   }
 
   .kepi-ending-scene--perfect {
-    background-image:
-      linear-gradient(
-        180deg,
-        rgba(44, 36, 22, 0.55) 0%,
-        rgba(74, 55, 40, 0.45) 50%,
-        rgba(90, 60, 35, 0.65) 100%
-      ),
-      url("/images/board/kepi_tulou-stage5-lanterns.png"),
-      url("/images/ending/kepi_wind-wave-background.png"),
-      url("/images/ending/kepi_ending-background.png");
+    filter: saturate(1.06) brightness(1.02);
   }
 
   .kepi-ending-scene--regret {
-    background-image:
-      linear-gradient(
-        180deg,
-        rgba(44, 36, 22, 0.78) 0%,
-        rgba(55, 42, 30, 0.62) 50%,
-        rgba(61, 46, 31, 0.82) 100%
-      ),
-      url("/images/board/kepi_tulou-stage3-gate.png"),
-      url("/images/ending/kepi_ending-background.png");
+    filter: saturate(0.94) brightness(0.96);
   }
 
   .kepi-ending-scene--storm {
-    background-image:
-      linear-gradient(
-        180deg,
-        rgba(12, 18, 32, 0.82) 0%,
-        rgba(22, 28, 42, 0.72) 45%,
-        rgba(30, 35, 48, 0.88) 100%
-      ),
-      url("/images/cinematics/kepi_victory-wave-foreground.png"),
-      url("/images/ending/kepi_wind-wave-background.png");
+    filter: saturate(0.88) brightness(0.9);
   }
 
   .kepi-ending-lanterns {
@@ -1187,6 +1150,110 @@
     }
     100% {
       opacity: 1;
+    }
+  }
+
+  .kepi-ending-catch-stage {
+    background: linear-gradient(
+      180deg,
+      rgba(8, 10, 16, 0.35) 0%,
+      rgba(8, 10, 16, 0.55) 100%
+    );
+    backdrop-filter: blur(2px);
+  }
+
+  .kepi-ending-catch-stage--slow {
+    box-shadow: inset 0 0 48px rgba(255, 220, 160, 0.18);
+  }
+
+  .kepi-ending-scatter {
+    animation: kepi-ending-scatter-drift 10s linear infinite;
+  }
+
+  .kepi-ending-letter-fall {
+    animation: kepi-ending-letter-fall 2.6s ease-in-out infinite;
+    transform-origin: center top;
+  }
+
+  .kepi-ending-letter-fall--slow {
+    animation-duration: 5.2s;
+  }
+
+  .kepi-ending-letter-fall:hover:not(:disabled) {
+    transform: translateX(-50%) scale(1.06);
+  }
+
+  .kepi-ending-letter-prop {
+    animation: kepi-ending-letter-sway 2.6s ease-in-out infinite;
+  }
+
+  .kepi-ending-letter-fall--slow .kepi-ending-letter-prop {
+    animation-duration: 5.2s;
+  }
+
+  .kepi-ending-letter-caught {
+    animation: kepi-ending-letter-caught 420ms ease-out both;
+  }
+
+  .kepi-ending-bullet-time {
+    animation: kepi-ending-bullet-pulse 1.4s ease-in-out infinite;
+  }
+
+  .kepi-ending-subtitle-mask {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 220, 160, 0.15);
+  }
+
+  @keyframes kepi-ending-scatter-drift {
+    0% {
+      transform: translateX(-2%) scale(1.02);
+    }
+    50% {
+      transform: translateX(2%) scale(1.04);
+    }
+    100% {
+      transform: translateX(-2%) scale(1.02);
+    }
+  }
+
+  @keyframes kepi-ending-letter-fall {
+    0%,
+    100% {
+      transform: translateX(-50%) translateY(-6%) rotate(var(--kepi-letter-drift, -4deg));
+    }
+    50% {
+      transform: translateX(-50%) translateY(28%) rotate(calc(var(--kepi-letter-drift, -4deg) * -0.5));
+    }
+  }
+
+  @keyframes kepi-ending-letter-sway {
+    0%,
+    100% {
+      transform: rotate(calc(var(--kepi-letter-drift, -4deg) * 0.6));
+    }
+    50% {
+      transform: rotate(calc(var(--kepi-letter-drift, -4deg) * -0.8));
+    }
+  }
+
+  @keyframes kepi-ending-letter-caught {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(12px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+
+  @keyframes kepi-ending-bullet-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.92;
     }
   }
 
@@ -1232,12 +1299,1184 @@
       0 0 14px rgba(155, 44, 44, 0.2);
   }
 
+  .kepi-journey-scroll {
+    border-radius: 0.625rem;
+    box-shadow:
+      0 4px 18px rgba(44, 36, 22, 0.22),
+      inset 0 1px 0 rgba(255, 248, 235, 0.35);
+  }
+
+  .kepi-journey-node--done {
+    opacity: 0.82;
+  }
+
+  .kepi-journey-node--current .kepi-journey-node-label {
+    color: rgba(44, 36, 22, 0.92);
+    font-weight: 600;
+  }
+
+  .kepi-journey-node-ring {
+    animation: kepi-journey-node-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes kepi-journey-node-pulse {
+    0%,
+    100% {
+      opacity: 0.88;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.04);
+    }
+  }
+
+  .kepi-journey-repair-fill {
+    box-shadow: inset 0 1px 0 rgba(255, 248, 235, 0.35);
+  }
+
+  .kepi-journey-metric .kepi-hud-tag-inner {
+    padding: 0.2rem 0.45rem;
+  }
+
+  .kepi-journey-metric .kepi-hud-label {
+    display: none;
+  }
+
+  .kepi-journey-metric .kepi-hud-value {
+    font-size: 0.6875rem;
+  }
+
+  .kepi-journey-settings {
+    border: 1px solid rgba(44, 36, 22, 0.12);
+    background: rgba(255, 248, 235, 0.55);
+  }
+
+  .kepi-opening-note {
+    cursor: pointer;
+    touch-action: manipulation;
+    transition:
+      transform 220ms ease,
+      opacity 220ms ease;
+  }
+
+  .kepi-opening-note-orbit {
+    display: inline-flex;
+    animation: kepi-opening-note-float 2.8s ease-in-out infinite;
+  }
+
+  .kepi-opening-note-icon {
+    filter: drop-shadow(0 8px 18px rgba(245, 158, 11, 0.45));
+  }
+
+  .kepi-opening-note-card {
+    border: 1px solid rgba(246, 193, 119, 0.35);
+    background:
+      linear-gradient(180deg, rgba(18, 10, 6, 0.72), rgba(10, 6, 4, 0.82)),
+      url("/images/ui/kepi_ui_narrative-paper.png") center / cover no-repeat;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.42);
+    min-width: 11rem;
+  }
+
+  .kepi-opening-note--caught {
+    transform: scale(1.08);
+  }
+
+  .kepi-opening-note:hover .kepi-opening-note-orbit {
+    animation-duration: 1.6s;
+  }
+
+  .kepi-opening-buff-flash {
+    animation: kepi-opening-buff-flash 420ms ease-out both;
+  }
+
+  @keyframes kepi-opening-note-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes kepi-opening-buff-flash {
+    from {
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  .kepi-pawn-card {
+    background: rgba(255, 248, 235, 0.92);
+    border-color: rgba(44, 36, 22, 0.18);
+    transition: filter 180ms ease;
+  }
+
+  .kepi-pawn-shop-scene {
+    background: radial-gradient(
+      circle at 50% 38%,
+      rgba(72, 28, 18, 0.38),
+      rgba(6, 4, 3, 0.94) 72%
+    );
+  }
+
+  .kepi-pawn-shop-vignette {
+    opacity: 0.94;
+  }
+
+  .kepi-pawn-letter-stage {
+    width: min(100%, 16rem);
+  }
+
+  .kepi-pawn-letter-btn {
+    touch-action: manipulation;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0.35rem;
+    border-radius: 0.75rem;
+    transition: transform 180ms ease;
+  }
+
+  .kepi-pawn-letter-btn--holding {
+    transform: scale(0.98);
+  }
+
+  .kepi-pawn-letter-btn--disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .kepi-pawn-hold-ring {
+    --kepi-hold-progress: 0;
+    position: absolute;
+    inset: 0.15rem;
+    border-radius: 999px;
+    background: conic-gradient(
+      rgba(245, 158, 11, 0.92) calc(var(--kepi-hold-progress) * 360deg),
+      rgba(255, 248, 235, 0.12) 0
+    );
+    mask: radial-gradient(farthest-side, transparent calc(100% - 0.28rem), #000 calc(100% - 0.26rem));
+    animation: kepi-pawn-hold-pulse 680ms ease-in-out infinite;
+  }
+
+  @keyframes kepi-pawn-hold-pulse {
+    0%,
+    100% {
+      opacity: 0.88;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .kepi-pawn-letter-image--burn {
+    animation: kepi-pawn-letter-burn 880ms ease-out both;
+  }
+
+  .kepi-pawn-letter-image--ash {
+    opacity: 0.35;
+    filter: grayscale(0.8);
+    transition: opacity 420ms ease, filter 420ms ease;
+  }
+
+  @keyframes kepi-pawn-letter-burn {
+    0% {
+      filter: brightness(1) sepia(0);
+      transform: scale(1);
+    }
+    35% {
+      filter: brightness(1.35) sepia(0.45) saturate(1.5);
+      transform: scale(1.03);
+    }
+    100% {
+      filter: brightness(0.85) sepia(0.25);
+      transform: scale(0.98);
+    }
+  }
+
+  .kepi-pawn-gold-burst {
+    animation: kepi-pawn-gold-burst 620ms ease-out both;
+  }
+
+  @keyframes kepi-pawn-gold-burst {
+    from {
+      opacity: 0;
+      transform: scale(1.04);
+    }
+    30% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+
+  .kepi-pawn-seal-flash {
+    animation: kepi-pawn-seal-flash 900ms ease-out both;
+    background: rgba(8, 4, 4, 0.45);
+  }
+
+  @keyframes kepi-pawn-seal-flash {
+    0% {
+      opacity: 0;
+      transform: scale(1.12);
+    }
+    25% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  .kepi-pawn-action-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 8.5rem;
+    padding: 1rem 1.05rem 1.1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(44, 36, 22, 0.22);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      filter 180ms ease;
+  }
+
+  .kepi-pawn-action-card--pawn {
+    background:
+      linear-gradient(180deg, rgba(255, 248, 235, 0.94), rgba(250, 240, 220, 0.9)),
+      url("/images/ui/kepi_ui_pawn-button-danger.png") center / cover no-repeat;
+  }
+
+  .kepi-pawn-action-card--debt {
+    background:
+      linear-gradient(180deg, rgba(255, 248, 235, 0.92), rgba(244, 232, 220, 0.88)),
+      url("/images/ui/kepi_ui_campfire-choice.png") center / cover no-repeat;
+  }
+
+  .kepi-pawn-action-card:hover:not(:disabled) {
+    transform: translateY(-2px);
+    filter: brightness(1.03);
+  }
+
+  .kepi-pawn-action-card--active {
+    border-color: rgba(245, 158, 11, 0.72);
+    box-shadow:
+      0 0 0 1px rgba(245, 158, 11, 0.35),
+      0 12px 32px rgba(120, 53, 15, 0.35);
+  }
+
+  .kepi-pawn-action-card:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+  }
+
+  .kepi-pawn-effect-badge {
+    border-radius: 999px;
+    border: 1px solid rgba(44, 36, 22, 0.12);
+    background: rgba(255, 255, 255, 0.55);
+    padding: 0.25rem 0.6rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: rgba(44, 36, 22, 0.88);
+  }
+
+  .kepi-pawn-stat-chip {
+    border: 1px solid rgba(246, 193, 119, 0.18);
+    background: rgba(12, 8, 6, 0.42);
+  }
+
+  .kepi-pawn-stats--pulse {
+    animation: kepi-pawn-stat-pop 680ms ease-out both;
+  }
+
+  @keyframes kepi-pawn-stat-pop {
+    from {
+      opacity: 0.72;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .kepi-pawn-leave:disabled {
+    opacity: 0.45;
+  }
+
+  .kepi-prep-enemy-portrait {
+    box-shadow: inset 0 1px 0 rgba(255, 248, 235, 0.25);
+  }
+
+  .kepi-prep-difficulty {
+    border: 1px solid rgba(44, 36, 22, 0.12);
+    background: rgba(255, 248, 235, 0.72);
+    color: rgba(44, 36, 22, 0.88);
+  }
+
+  .kepi-prep-difficulty--tutorial {
+    border-color: rgba(14, 116, 144, 0.28);
+    background: rgba(14, 116, 144, 0.12);
+    color: rgb(21, 94, 117);
+  }
+
+  .kepi-prep-difficulty--normal {
+    border-color: rgba(107, 79, 42, 0.28);
+    background: rgba(139, 106, 58, 0.14);
+    color: rgb(92, 64, 51);
+  }
+
+  .kepi-prep-difficulty--hard {
+    border-color: rgba(180, 83, 9, 0.32);
+    background: rgba(180, 83, 9, 0.14);
+    color: rgb(146, 64, 14);
+  }
+
+  .kepi-prep-difficulty--extreme {
+    border-color: rgba(153, 27, 27, 0.35);
+    background: rgba(153, 27, 27, 0.16);
+    color: rgb(127, 29, 29);
+  }
+
+  .kepi-prep-modifier {
+    border: 1px solid rgba(44, 36, 22, 0.1);
+    background: rgba(255, 248, 235, 0.65);
+    color: rgba(44, 36, 22, 0.82);
+  }
+
+  .kepi-prep-modifier--warning {
+    border-color: rgba(180, 83, 9, 0.35);
+    background: rgba(180, 83, 9, 0.12);
+    color: rgb(146, 64, 14);
+  }
+
+  .kepi-prep-modifier--buff {
+    border-color: rgba(14, 116, 144, 0.28);
+    background: rgba(14, 116, 144, 0.1);
+    color: rgb(21, 94, 117);
+  }
+
+  .kepi-prep-modifier--info {
+    border-color: rgba(107, 79, 42, 0.22);
+    background: rgba(139, 106, 58, 0.1);
+    color: rgb(92, 64, 51);
+  }
+
+  .kepi-leaf-fall-layer {
+    animation: kepi-leaf-fall-in 520ms ease-out both;
+  }
+
+  .kepi-leaf-fall-layer--fade-out {
+    animation: kepi-leaf-fall-out 680ms ease-in both;
+  }
+
+  .kepi-leaf-fall-lanterns {
+    animation: kepi-leaf-fall-lanterns 3.2s ease-in-out infinite;
+  }
+
+  .kepi-leaf-fall-title {
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+    animation: kepi-leaf-fall-title 820ms ease-out both;
+  }
+
+  @keyframes kepi-leaf-fall-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes kepi-leaf-fall-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes kepi-leaf-fall-lanterns {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  @keyframes kepi-leaf-fall-title {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .kepi-assassin-ring-anchor {
+    left: 50%;
+    top: 44%;
+    transform: translate(-50%, -50%);
+  }
+
+  .kepi-assassin-warning-ring {
+    animation: kepi-assassin-ring-pulse 1.6s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px rgba(193, 18, 31, 0.45));
+  }
+
+  .kepi-assassin-warning-ring--flash {
+    animation: kepi-assassin-ring-flash 420ms ease-out both;
+  }
+
+  .kepi-assassin-leap-flash {
+    animation: kepi-assassin-leap-flash 720ms ease-out both;
+  }
+
+  @keyframes kepi-assassin-ring-pulse {
+    0%,
+    100% {
+      opacity: 0.72;
+      transform: scale(0.96);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+  }
+
+  @keyframes kepi-assassin-ring-flash {
+    0% {
+      opacity: 0.4;
+      transform: scale(0.88);
+    }
+    35% {
+      opacity: 1;
+      transform: scale(1.12);
+    }
+    100% {
+      opacity: 0.85;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes kepi-assassin-leap-flash {
+    0% {
+      opacity: 0;
+    }
+    18% {
+      opacity: 0.95;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .kepi-pawn-card:hover:not(:disabled) {
+    filter: brightness(1.03);
+  }
+
   .kepi-pawn-button:not(:disabled):hover {
     filter: brightness(1.06);
   }
 
   .kepi-pawn-button:not(:disabled):active {
     transform: translateY(1px) scale(0.99);
+  }
+
+  .kepi-campfire-stage {
+    pointer-events: none;
+    position: relative;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    padding:
+      max(3.75rem, calc(env(safe-area-inset-top) + 3rem))
+      4%
+      max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    .kepi-campfire-stage {
+      padding:
+        max(4rem, calc(env(safe-area-inset-top) + 3.35rem))
+        5%
+        max(0.75rem, env(safe-area-inset-bottom));
+    }
+  }
+
+  .kepi-campfire-stage__content {
+    pointer-events: auto;
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: -0.85rem;
+  }
+
+  .kepi-campfire-scene {
+    background: radial-gradient(
+      circle at 50% 88%,
+      rgba(120, 58, 18, 0.24),
+      rgba(8, 6, 4, 0.88) 78%
+    );
+  }
+
+  .kepi-campfire-scene--nanyang {
+    background: radial-gradient(
+      ellipse 120% 70% at 50% 92%,
+      rgba(96, 48, 14, 0.18),
+      rgba(8, 6, 4, 0.55) 52%,
+      rgba(8, 6, 4, 0.92) 88%
+    );
+  }
+
+  .kepi-campfire-vignette {
+    opacity: 0.94;
+  }
+
+  .kepi-campfire-glow {
+    animation: kepi-campfire-glow-flicker 4.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .kepi-campfire-glow--subtle {
+    animation-duration: 5s;
+  }
+
+  .kepi-campfire-glow--opening {
+    opacity: 0.55;
+  }
+
+  @keyframes kepi-campfire-glow-flicker {
+    0%,
+    100% {
+      opacity: 0.72;
+      transform: scale(1);
+    }
+    45% {
+      opacity: 0.92;
+      transform: scale(1.015);
+    }
+    70% {
+      opacity: 0.8;
+      transform: scale(0.995);
+    }
+  }
+
+  .kepi-campfire-beat {
+    animation: kepi-campfire-beat-in 520ms ease-out both;
+    width: 100%;
+    max-width: 36rem;
+    margin-top: -0.85rem;
+  }
+
+  .kepi-campfire-beat--choice {
+    animation-duration: 640ms;
+    max-height: min(50vh, 27.5rem);
+  }
+
+  .kepi-campfire-beat--choice-ration {
+    max-height: none;
+    margin-top: -1.15rem;
+  }
+
+  .kepi-campfire-narrative--choice {
+    display: flex;
+    max-height: min(50vh, 27.5rem);
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .kepi-campfire-narrative--choice-ration {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .kepi-campfire-choice-header {
+    flex-shrink: 0;
+  }
+
+  .kepi-campfire-choice-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    border-top: 1px dashed rgba(246, 193, 119, 0.22);
+    border-bottom: 1px dashed rgba(246, 193, 119, 0.22);
+  }
+
+  .kepi-campfire-choice-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-bottom: 0.15rem;
+  }
+
+  .kepi-campfire-choice-footer__hint {
+    margin-top: 0.5rem;
+  }
+
+  .kepi-campfire-choice-footer__hint--soft {
+    margin-top: 0.55rem;
+    font-size: 0.8125rem;
+    font-style: italic;
+    font-weight: 450;
+    letter-spacing: 0.04em;
+    line-height: 1.55;
+    color: rgba(255, 236, 210, 0.62);
+  }
+
+  /* camp-1 · 粿条二选一 — textured ration cards */
+  .kepi-campfire-ration-split {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    padding: 0.1rem 0 0;
+  }
+
+  .kepi-campfire-ration-split__seam {
+    position: absolute;
+    inset: 0.35rem 50% 0.15rem;
+    z-index: 2;
+    width: 0;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .kepi-campfire-ration-split__seam::before {
+    content: "";
+    position: absolute;
+    top: 0.65rem;
+    bottom: 0.65rem;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(255, 232, 196, 0.18) 12%,
+      rgba(255, 248, 235, 0.72) 50%,
+      rgba(255, 232, 196, 0.18) 88%,
+      transparent
+    );
+  }
+
+  .kepi-campfire-ration-split__ember {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.45rem;
+    height: 0.45rem;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: radial-gradient(
+      circle,
+      rgba(255, 237, 200, 0.95) 0%,
+      rgba(245, 158, 11, 0.55) 42%,
+      transparent 72%
+    );
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.45);
+    animation: kepi-campfire-ration-ember 3.6s ease-in-out infinite;
+  }
+
+  @keyframes kepi-campfire-ration-ember {
+    0%,
+    100% {
+      opacity: 0.72;
+      transform: translate(-50%, -50%) scale(0.92);
+    }
+    50% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+  }
+
+  .kepi-campfire-ration-card {
+    position: relative;
+    display: flex;
+    min-height: 6.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    overflow: hidden;
+    padding: 0.85rem 0.8rem 0.95rem;
+    border: 1px solid rgba(246, 193, 119, 0.22);
+    border-radius: 0.55rem;
+    background:
+      linear-gradient(165deg, rgba(255, 248, 235, 0.05) 0%, transparent 38%),
+      linear-gradient(180deg, rgba(24, 14, 8, 0.88), rgba(10, 6, 4, 0.94));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 248, 235, 0.07),
+      0 8px 22px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+    text-align: left;
+    transition:
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      transform 220ms ease,
+      background 220ms ease;
+  }
+
+  .kepi-campfire-ration-card--left {
+    background:
+      linear-gradient(145deg, rgba(245, 158, 11, 0.1) 0%, transparent 52%),
+      linear-gradient(180deg, rgba(28, 16, 8, 0.9), rgba(12, 7, 4, 0.95));
+  }
+
+  .kepi-campfire-ration-card--right {
+    background:
+      linear-gradient(215deg, rgba(120, 168, 130, 0.12) 0%, transparent 52%),
+      linear-gradient(180deg, rgba(22, 18, 12, 0.9), rgba(10, 8, 6, 0.95));
+  }
+
+  .kepi-campfire-ration-card__fold {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1.65rem;
+    height: 1.65rem;
+    background: linear-gradient(
+      225deg,
+      rgba(255, 248, 235, 0.1) 0%,
+      rgba(255, 248, 235, 0.02) 48%,
+      transparent 50%
+    );
+    pointer-events: none;
+  }
+
+  .kepi-campfire-ration-card__eyebrow {
+    position: relative;
+    z-index: 1;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(251, 191, 36, 0.72);
+  }
+
+  .kepi-campfire-ration-card--right .kepi-campfire-ration-card__eyebrow {
+    color: rgba(167, 210, 176, 0.78);
+  }
+
+  .kepi-campfire-ration-card__title {
+    position: relative;
+    z-index: 1;
+    margin-top: 0.55rem;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(255, 248, 235, 0.96);
+  }
+
+  .kepi-campfire-ration-card__desc {
+    position: relative;
+    z-index: 1;
+    margin-top: 0.45rem;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: rgba(255, 248, 235, 0.68);
+  }
+
+  .kepi-campfire-ration-card__mark {
+    position: absolute;
+    right: 0.65rem;
+    bottom: 0.65rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border: 1px solid rgba(246, 193, 119, 0.28);
+    border-radius: 999px;
+    opacity: 0;
+    transform: scale(0.6);
+    transition:
+      opacity 200ms ease,
+      transform 200ms ease,
+      border-color 200ms ease,
+      background 200ms ease;
+  }
+
+  .kepi-campfire-ration-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(246, 193, 119, 0.38);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 248, 235, 0.1),
+      0 12px 28px rgba(0, 0, 0, 0.34);
+  }
+
+  .kepi-campfire-ration-card--selected {
+    transform: translateY(-2px);
+    border-color: rgba(251, 191, 36, 0.62);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 248, 235, 0.06),
+      0 0 0 1px rgba(245, 158, 11, 0.18),
+      0 14px 32px rgba(0, 0, 0, 0.36),
+      0 0 28px rgba(245, 158, 11, 0.14);
+  }
+
+  .kepi-campfire-ration-card--left.kepi-campfire-ration-card--selected {
+    background:
+      linear-gradient(145deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.04) 58%, transparent 100%),
+      linear-gradient(180deg, rgba(32, 18, 8, 0.92), rgba(14, 8, 4, 0.96));
+  }
+
+  .kepi-campfire-ration-card--right.kepi-campfire-ration-card--selected {
+    border-color: rgba(167, 210, 176, 0.55);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 248, 235, 0.06),
+      0 0 0 1px rgba(120, 168, 130, 0.2),
+      0 14px 32px rgba(0, 0, 0, 0.36),
+      0 0 24px rgba(120, 168, 130, 0.12);
+    background:
+      linear-gradient(215deg, rgba(120, 168, 130, 0.22) 0%, rgba(120, 168, 130, 0.05) 58%, transparent 100%),
+      linear-gradient(180deg, rgba(24, 20, 14, 0.92), rgba(12, 10, 8, 0.96));
+  }
+
+  .kepi-campfire-ration-card--selected .kepi-campfire-ration-card__title {
+    color: #fff8eb;
+    text-shadow: 0 0 18px rgba(246, 193, 119, 0.18);
+  }
+
+  .kepi-campfire-ration-card--selected .kepi-campfire-ration-card__mark {
+    opacity: 1;
+    transform: scale(1);
+    border-color: rgba(255, 248, 235, 0.72);
+    background: radial-gradient(circle, rgba(255, 248, 235, 0.92) 0%, rgba(245, 158, 11, 0.55) 100%);
+  }
+
+  .kepi-campfire-ration-card--right.kepi-campfire-ration-card--selected .kepi-campfire-ration-card__mark {
+    background: radial-gradient(circle, rgba(255, 248, 235, 0.92) 0%, rgba(120, 168, 130, 0.65) 100%);
+  }
+
+  .kepi-campfire-ration-card:focus-visible {
+    outline: 2px solid rgba(212, 165, 116, 0.55);
+    outline-offset: 3px;
+  }
+
+  @media (min-width: 640px) {
+    .kepi-campfire-ration-split {
+      gap: 0.85rem;
+    }
+
+    .kepi-campfire-ration-card {
+      min-height: 6.85rem;
+      padding: 1rem 0.95rem 1.05rem;
+    }
+
+    .kepi-campfire-ration-card__title {
+      font-size: 1.0625rem;
+    }
+
+    .kepi-campfire-ration-card__desc {
+      font-size: 0.8125rem;
+    }
+  }
+
+  .kepi-campfire-choice-footer__cta {
+    margin-top: 0.75rem;
+  }
+
+  @keyframes kepi-campfire-beat-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .kepi-campfire-narrative {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(246, 193, 119, 0.28);
+    background:
+      linear-gradient(180deg, rgba(18, 10, 6, 0.72), rgba(10, 6, 4, 0.82)),
+      url("/images/ui/kepi_ui_narrative-paper.png") center / cover no-repeat;
+    box-shadow:
+      0 12px 36px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 248, 235, 0.06);
+    backdrop-filter: blur(2px);
+  }
+
+  .kepi-campfire-choice-option {
+    display: block;
+    width: 100%;
+    padding: 0.7rem 0.6rem 0.75rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(246, 193, 119, 0.16);
+    transition:
+      background 200ms ease,
+      box-shadow 200ms ease,
+      color 200ms ease;
+  }
+
+  .kepi-campfire-choice-option:last-child {
+    border-bottom: 0;
+  }
+
+  .kepi-campfire-choice-option__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 248, 235, 0.94);
+  }
+
+  .kepi-campfire-choice-option__desc {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: rgba(255, 248, 235, 0.72);
+  }
+
+  .kepi-campfire-choice-option__effect {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(251, 191, 36, 0.78);
+  }
+
+  .kepi-campfire-choice-option:hover {
+    background: rgba(245, 158, 11, 0.06);
+  }
+
+  .kepi-campfire-choice-option--selected {
+    background: linear-gradient(
+      90deg,
+      rgba(245, 158, 11, 0.16) 0%,
+      rgba(245, 158, 11, 0.04) 58%,
+      transparent 100%
+    );
+    box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.82);
+  }
+
+  .kepi-campfire-choice-option--selected .kepi-campfire-choice-option__title {
+    color: #fff8eb;
+  }
+
+  .kepi-campfire-choice-option--stack-0.kepi-campfire-choice-option--selected {
+    animation: kepi-campfire-choice-tilt-left 480ms ease-out;
+  }
+
+  .kepi-campfire-choice-option--stack-1.kepi-campfire-choice-option--selected {
+    animation: kepi-campfire-choice-tilt-right 480ms ease-out;
+  }
+
+  .kepi-campfire-choice-list--split {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .kepi-campfire-choice-list--split::after {
+    content: "";
+    position: absolute;
+    top: 0.55rem;
+    bottom: 0.55rem;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(246, 193, 119, 0.42) 18%,
+      rgba(255, 248, 235, 0.55) 50%,
+      rgba(246, 193, 119, 0.42) 82%,
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  .kepi-campfire-choice-list--split .kepi-campfire-choice-option {
+    border-bottom: 0;
+    min-height: 5.75rem;
+  }
+
+  .kepi-campfire-choice-list--split .kepi-campfire-choice-option--half-0 {
+    padding-right: 0.55rem;
+  }
+
+  .kepi-campfire-choice-list--split .kepi-campfire-choice-option--half-1 {
+    padding-left: 0.55rem;
+  }
+
+  .kepi-campfire-choice-list--split
+    .kepi-campfire-choice-option--half-1.kepi-campfire-choice-option--selected {
+    background: linear-gradient(
+      270deg,
+      rgba(245, 158, 11, 0.16) 0%,
+      rgba(245, 158, 11, 0.04) 58%,
+      transparent 100%
+    );
+    box-shadow: inset -3px 0 0 rgba(245, 158, 11, 0.82);
+  }
+
+  .kepi-campfire-choice-list--split
+    .kepi-campfire-choice-option--half-0.kepi-campfire-choice-option--selected {
+    animation: kepi-campfire-choice-tilt-left 480ms ease-out;
+  }
+
+  .kepi-campfire-choice-list--split
+    .kepi-campfire-choice-option--half-1.kepi-campfire-choice-option--selected {
+    animation: kepi-campfire-choice-tilt-right 480ms ease-out;
+  }
+
+  @media (min-width: 640px) {
+    .kepi-campfire-choice-list--split .kepi-campfire-choice-option {
+      min-height: 6.25rem;
+    }
+
+    .kepi-campfire-choice-list--split .kepi-campfire-choice-option--half-0 {
+      padding-right: 0.75rem;
+    }
+
+    .kepi-campfire-choice-list--split .kepi-campfire-choice-option--half-1 {
+      padding-left: 0.75rem;
+    }
+  }
+
+  @keyframes kepi-campfire-choice-tilt-left {
+    from {
+      transform: translateX(-2px);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes kepi-campfire-choice-tilt-right {
+    from {
+      transform: translateX(2px);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .kepi-campfire-confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.15rem 0.35rem 0.45rem;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 248, 235, 0.92);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    transition:
+      color 180ms ease,
+      letter-spacing 180ms ease,
+      text-shadow 180ms ease,
+      opacity 180ms ease;
+  }
+
+  .kepi-campfire-confirm:disabled {
+    cursor: not-allowed;
+    opacity: 0.34;
+    letter-spacing: 0.12em;
+  }
+
+  .kepi-campfire-confirm:not(:disabled):hover {
+    color: #fff8eb;
+    letter-spacing: 0.18em;
+    text-shadow: 0 0 20px rgba(246, 193, 119, 0.32);
+  }
+
+  .kepi-campfire-confirm:not(:disabled):hover .kepi-campfire-continue__mark {
+    opacity: 1;
+    transform: translateX(3px);
+  }
+
+  .kepi-campfire-confirm:focus-visible {
+    outline: 2px solid rgba(212, 165, 116, 0.55);
+    outline-offset: 4px;
+    border-radius: 0.25rem;
+  }
+
+  .kepi-campfire-continue {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.15rem 0.35rem 0.45rem;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 248, 235, 0.92);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition:
+      color 180ms ease,
+      letter-spacing 180ms ease,
+      text-shadow 180ms ease;
+  }
+
+  .kepi-campfire-continue__mark {
+    font-size: 1.125rem;
+    line-height: 1;
+    opacity: 0.82;
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+
+  .kepi-campfire-continue:disabled {
+    cursor: not-allowed;
+    opacity: 0.34;
+    letter-spacing: 0.12em;
+  }
+
+  .kepi-campfire-continue:not(:disabled):hover {
+    color: #fff8eb;
+    letter-spacing: 0.16em;
+    text-shadow: 0 0 18px rgba(246, 193, 119, 0.28);
+  }
+
+  .kepi-campfire-continue:not(:disabled):hover .kepi-campfire-continue__mark {
+    opacity: 1;
+    transform: translateX(3px);
+  }
+
+  .kepi-campfire-continue:focus-visible {
+    outline: 2px solid rgba(212, 165, 116, 0.55);
+    outline-offset: 4px;
+    border-radius: 0.25rem;
+  }
+
+  .kepi-campfire-stat-pop {
+    animation: kepi-campfire-stat-pop 680ms ease-out both;
+  }
+
+  @keyframes kepi-campfire-stat-pop {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
 
   .kepi-tulou-milestone-card {
@@ -1371,5 +2610,227 @@
     background: url("/images/ui/kepi_ui_divider-wood.png") center / contain
       no-repeat;
     opacity: 0.85;
+  }
+
+  /* Letter HUD — persistent metric strip */
+  .kepi-journey-command-panel {
+    box-shadow:
+      0 4px 18px rgba(44, 36, 22, 0.18),
+      inset 0 1px 0 rgba(255, 248, 235, 0.35);
+  }
+
+  .kepi-journey-command-metric {
+    border: 1px solid rgba(44, 36, 22, 0.08);
+  }
+
+  .kepi-journey-command-narrative {
+    border-top: 1px dashed rgba(44, 36, 22, 0.1);
+    padding-top: 0.375rem;
+  }
+
+  /* Collapsible prep dock */
+  .kepi-prep-dock-panel {
+    box-shadow:
+      0 -4px 24px rgba(44, 36, 22, 0.16),
+      inset 0 1px 0 rgba(255, 248, 235, 0.35);
+  }
+
+  .kepi-prep-dock-handle {
+    background: rgba(255, 248, 235, 0.72);
+  }
+
+  .kepi-prep-dock-toggle {
+    border-radius: 0.375rem;
+    transition: background 160ms ease;
+  }
+
+  .kepi-prep-dock-toggle:hover {
+    background: rgba(44, 36, 22, 0.05);
+  }
+
+  .kepi-prep-dock-body {
+    max-height: min(42vh, 22rem);
+    overflow-y: auto;
+  }
+
+  .kepi-prep-shop-slots {
+    scrollbar-width: thin;
+  }
+
+  .kepi-prep-guide-inline .kepi-prep-guide-dot {
+    background: rgba(44, 36, 22, 0.18);
+  }
+
+  .kepi-prep-guide-dot--active {
+    background: rgba(245, 158, 11, 0.95);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);
+  }
+
+  .kepi-prep-guide-dot--done {
+    background: rgba(22, 101, 52, 0.75);
+  }
+
+  .kepi-letter-hud-bar {
+    border-radius: 0.5rem;
+    border: 1px solid rgba(44, 36, 22, 0.12);
+    background: rgba(255, 248, 235, 0.92);
+    box-shadow: 0 2px 10px rgba(44, 36, 22, 0.12);
+  }
+
+  .kepi-letter-hud-bar--hint {
+    border-color: rgba(180, 83, 9, 0.35);
+    box-shadow:
+      0 0 0 1px rgba(180, 83, 9, 0.15),
+      0 2px 10px rgba(44, 36, 22, 0.12);
+    animation: kepi-letter-hud-hint 2.4s ease-in-out infinite;
+  }
+
+  @keyframes kepi-letter-hud-hint {
+    0%,
+    100% {
+      background: rgba(255, 248, 235, 0.92);
+    }
+    50% {
+      background: rgba(254, 243, 199, 0.95);
+    }
+  }
+
+  .kepi-letter-support-popover__inner {
+    border-radius: 0.5rem;
+    border: 1px solid rgba(44, 36, 22, 0.12);
+    background: rgba(255, 248, 235, 0.98);
+    box-shadow: 0 8px 24px rgba(44, 36, 22, 0.18);
+  }
+
+  /* Stage brief overlay */
+  .kepi-stage-brief-overlay__scrim {
+    background:
+      radial-gradient(circle at 50% 40%, rgba(12, 10, 8, 0.55), rgba(12, 10, 8, 0.88)),
+      rgba(12, 10, 8, 0.72);
+    backdrop-filter: blur(2px);
+  }
+
+  .kepi-stage-brief-overlay__card {
+    animation: kepi-campfire-beat-in 520ms ease-out both;
+  }
+
+  .kepi-stage-brief-card {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(246, 193, 119, 0.28);
+    background:
+      linear-gradient(180deg, rgba(42, 28, 16, 0.94), rgba(24, 16, 10, 0.97)),
+      rgba(24, 16, 10, 0.95);
+    box-shadow:
+      0 18px 48px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 236, 200, 0.12);
+  }
+
+  .kepi-level-tone--warm {
+    background:
+      radial-gradient(circle at 18% 12%, rgba(232, 168, 73, 0.18), transparent 34%),
+      linear-gradient(180deg, rgba(54, 35, 19, 0.94), rgba(24, 16, 10, 0.97));
+  }
+
+  .kepi-level-tone--edict {
+    border-color: rgba(193, 18, 31, 0.32);
+    background:
+      radial-gradient(circle at 82% 10%, rgba(193, 18, 31, 0.2), transparent 34%),
+      linear-gradient(180deg, rgba(48, 28, 20, 0.95), rgba(24, 16, 10, 0.97));
+  }
+
+  .kepi-level-tone--checkpoint {
+    border-color: rgba(180, 83, 9, 0.34);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(180, 83, 9, 0.22), transparent 36%),
+      linear-gradient(180deg, rgba(45, 31, 18, 0.96), rgba(20, 14, 9, 0.97));
+  }
+
+  .kepi-level-tone--contract {
+    border-color: rgba(202, 138, 4, 0.34);
+    background:
+      radial-gradient(circle at 20% 20%, rgba(202, 138, 4, 0.18), transparent 34%),
+      linear-gradient(180deg, rgba(46, 34, 19, 0.96), rgba(21, 15, 9, 0.97));
+  }
+
+  .kepi-level-tone--mountain {
+    border-color: rgba(74, 111, 86, 0.34);
+    background:
+      radial-gradient(circle at 18% 0%, rgba(74, 111, 86, 0.2), transparent 34%),
+      linear-gradient(180deg, rgba(29, 39, 28, 0.96), rgba(13, 17, 12, 0.98));
+  }
+
+  .kepi-level-tone--harbor {
+    border-color: rgba(74, 111, 165, 0.34);
+    background:
+      radial-gradient(circle at 78% 10%, rgba(74, 111, 165, 0.2), transparent 36%),
+      linear-gradient(180deg, rgba(25, 37, 48, 0.96), rgba(12, 16, 20, 0.98));
+  }
+
+  .kepi-level-tone--fire {
+    border-color: rgba(193, 18, 31, 0.42);
+    background:
+      radial-gradient(circle at 82% 8%, rgba(193, 18, 31, 0.28), transparent 36%),
+      radial-gradient(circle at 18% 26%, rgba(232, 168, 73, 0.2), transparent 30%),
+      linear-gradient(180deg, rgba(52, 24, 18, 0.97), rgba(12, 9, 7, 0.98));
+  }
+
+  /* Prep sidebar + guide */
+  .kepi-prep-guide-bar {
+    border-radius: 0.5rem;
+    border: 1px dashed rgba(44, 36, 22, 0.14);
+    background: rgba(255, 248, 235, 0.45);
+    padding: 0.5rem 0.625rem;
+  }
+
+  .kepi-prep-guide-step {
+    border: 1px solid rgba(44, 36, 22, 0.1);
+    background: rgba(255, 248, 235, 0.65);
+    color: rgba(44, 36, 22, 0.55);
+  }
+
+  .kepi-prep-guide-step--active {
+    border-color: rgba(180, 83, 9, 0.45);
+    background: rgba(254, 243, 199, 0.85);
+    color: rgba(120, 53, 15, 0.95);
+    font-weight: 700;
+  }
+
+  .kepi-prep-guide-step--done {
+    border-color: rgba(22, 101, 52, 0.25);
+    background: rgba(220, 252, 231, 0.65);
+    color: rgba(22, 101, 52, 0.85);
+  }
+
+  .kepi-prep-guide-target {
+    border-radius: 0.625rem;
+    box-shadow:
+      0 0 0 2px rgba(245, 158, 11, 0.85),
+      0 0 18px rgba(245, 158, 11, 0.45);
+    animation: kepi-prep-guide-pulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes kepi-prep-guide-pulse {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 2px rgba(245, 158, 11, 0.85),
+        0 0 14px rgba(245, 158, 11, 0.35);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px rgba(245, 158, 11, 0.95),
+        0 0 22px rgba(245, 158, 11, 0.55);
+    }
+  }
+
+  .kepi-prep-guide-backrow {
+    left: 22%;
+    right: 22%;
+    bottom: 42%;
+    height: 10%;
+    border: 2px dashed rgba(245, 158, 11, 0.65);
+    border-radius: 0.5rem;
+    background: rgba(245, 158, 11, 0.06);
+    animation: kepi-prep-guide-pulse 1.8s ease-in-out infinite;
   }
 }

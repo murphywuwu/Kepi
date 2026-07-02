@@ -23,7 +23,9 @@ export function SettingsMenu() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
 
   useEffect(() => {
-    if (open) setSettings(loadSettings());
+    if (!open) return;
+    const timer = window.setTimeout(() => setSettings(loadSettings()), 0);
+    return () => window.clearTimeout(timer);
   }, [open]);
 
   const updateSettings = (patch: Partial<Settings>) => {

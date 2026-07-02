@@ -34,7 +34,7 @@ export function prepPlacementHints(
     hints.push({ cell: { x: col, y: FRONT_ROW }, kind: "attack" });
   }
 
-  if (stage < 4) return hints;
+  if (stage < 5) return hints;
 
   const shuike = shuikeOnBoard(allies);
   if (!shuike?.position) return hints;
@@ -62,7 +62,7 @@ export function shuikeAssassinWarningPosition(allies: Piece[]): BoardPosition | 
 }
 
 export function hasAssassinThreat(stage: number): boolean {
-  return stage >= 4;
+  return stage >= 7;
 }
 
 export function drawPlacementHintRing(

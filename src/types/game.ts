@@ -1,3 +1,4 @@
+import type { BattleOpeningBuff } from "@/data/battleBuffs";
 import type { ScenePhase } from "./index";
 
 export type GameResult = "playing" | "win" | "lose" | null;
@@ -36,10 +37,19 @@ export type HomeRepairTier = 0 | 1 | 2 | 3;
 export type HomeRepairMilestone = 33 | 66 | 99;
 
 export type GameState = {
+  /** Current battle stage index (enemy scaling). */
   stage: number;
+  /** @deprecated Use totalNodes — kept for save migration. */
   totalStages: number;
+  /** V3.1 linear route length. */
+  totalNodes: number;
+  /** Index into the fixed journey route (0-based). */
+  journeyIndex: number;
+  /** Id of the node the player is currently on. */
+  currentNodeId: string;
   survival: number;
   kebi: number;
+  /** Runtime threshold = baseKebiThreshold + bloodDebtCount. */
   kebiThreshold: number;
   sangzi: number;
   homeRepair: number;
@@ -47,17 +57,35 @@ export type GameState = {
   homeRepairTier: HomeRepairTier;
   gold: number;
   population: number;
-  /** UI display only — no longer affects gold income in V2.0. */
+  /** UI display only — no longer affects gold income. */
   winStreak: number;
-  /** UI display only — no longer affects gold income in V2.0. */
+  /** UI display only — no longer affects gold income. */
   loseStreak: number;
   /** Cumulative letters pawned for gold (Feature B). */
   pawnedKebi: number;
+  /** BORROW_AGAINST_RETURN count — raises kebiThreshold permanently. */
+  bloodDebtCount: number;
   /** Letters pawned during the current prep→battle round (Feature H). */
   roundPawnCount: number;
+  /** Whether blood debt was taken this round (narrative tags). */
+  roundBloodDebt: boolean;
+  /** Campfire debuff applied to next battle enemy HP factor. */
+  nextBattleEnemyHpFactor: number;
   result: GameResult;
   /** Explicit ending branch when `phase === "ending"`. */
   endingType: EndingType | null;
+};
+
+export type BattleOpeningBuffState = {
+  offered: BattleOpeningBuff;
+  caught: boolean;
+  resolved: boolean;
+};
+
+export type CampfireRuntime = {
+  scenarioId: string;
+  choiceAId: string;
+  choiceBId: string;
 };
 
 export type WaterGuestBattleState = {
@@ -117,7 +145,9 @@ export type BattleEvent =
   | { type: "skill"; sourceId: string; skillId: string }
   | { type: "roundEnd" }
   | { type: "waterGuestSurvived" }
-  | { type: "waterGuestDied" };
+  | { type: "waterGuestDied" }
+  | { type: "leafFallStart" }
+  | { type: "leafFallEnd" };
 
 export type TulouBattleBuffs = {
   tier: HomeRepairTier;
@@ -136,6 +166,11 @@ export type BattleSnapshot = {
   finished?: boolean;
   waterGuest: WaterGuestBattleState;
   tulouBuffs: TulouBattleBuffs;
+  openingBuffAtkMultiplier?: number;
+  leafFall?: {
+    triggered: boolean;
+    activeUntilMs: number;
+  };
 };
 
 export type BattleResult = {
@@ -155,6 +190,9 @@ export type BattleInput = {
   allies: Piece[];
   enemies?: Enemy[];
   homeRepairTier?: HomeRepairTier;
+  openingBuffAtkMultiplier?: number;
+  enemyHpFactorOverride?: number;
+  scalingOverride?: number;
 };
 
 export type ShopState = {
@@ -171,6 +209,9 @@ export type GameSnapshot = {
   battle?: BattleSnapshot | null;
   lastBattleResult?: BattleResult | null;
   settlement?: SettlementSummary | null;
+  openingBuff?: BattleOpeningBuffState | null;
+  activeOpeningBuff?: BattleOpeningBuff | null;
+  campfire?: CampfireRuntime | null;
 };
 
 export type GameAction =
@@ -180,9 +221,15 @@ export type GameAction =
   | { type: "REFRESH_SHOP" }
   | { type: "BUY_POPULATION" }
   | { type: "PAWN_KEBI" }
+  | { type: "BORROW_AGAINST_RETURN" }
   | { type: "START_BATTLE" }
+  | { type: "CATCH_OPENING_BUFF" }
+  | { type: "SKIP_OPENING_BUFF" }
   | { type: "BATTLE_TICK" }
   | { type: "END_BATTLE" }
   | { type: "APPLY_HOME_REPAIR" }
   | { type: "ADVANCE_STAGE" }
+  | { type: "ADVANCE_JOURNEY" }
+  | { type: "LEAVE_PAWN_SHOP" }
+  | { type: "PICK_CAMPFIRE_CHOICE"; choiceId: string }
   | { type: "LOAD_SNAPSHOT"; snapshot: GameSnapshot };

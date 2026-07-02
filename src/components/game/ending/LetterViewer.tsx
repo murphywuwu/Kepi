@@ -23,10 +23,11 @@ export function LetterViewer({
       innerClassName="p-6"
     >
       <article
+        className="rounded-md"
         style={{
-          backgroundImage: `linear-gradient(rgba(255,251,235,0.88), rgba(255,251,235,0.88)), url('${ASSET_MANIFEST.ending.letterFrame}')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundImage: `linear-gradient(rgba(255,251,235,0.9), rgba(255,251,235,0.9)), url('${ASSET_MANIFEST.ending.paperTextureSvg}'), url('${ASSET_MANIFEST.ending.realLetterBg}'), url('${ASSET_MANIFEST.ending.letterFrame}')`,
+          backgroundSize: "cover, auto, cover, cover",
+          backgroundPosition: "center, center, center, center",
         }}
       >
         <header className="mb-4 space-y-1 border-b border-amber-900/15 pb-3">

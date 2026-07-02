@@ -2,9 +2,11 @@
 
 import { useLayoutEffect, useMemo, useState } from "react";
 import { ASSET_MANIFEST } from "@/data/assets";
-import { PIECE_TEMPLATES, PAWN_KEBI_GOLD } from "@/engine/constants";
+import { PIECE_TEMPLATES, PAWN_KEBI_GOLD, BLOOD_DEBT_GOLD } from "@/engine/constants";
+import { journeyNodeAt } from "@/data/journey";
+import { levelInteractionForNode } from "@/data/levelInteractions";
 import { PIECE_VISUALS, isProtectedPiece } from "@/lib/game/assets";
-import { benchBottomRem, benchDockBottomOffset, benchDockStyle } from "@/lib/game/bottomLayout";
+import { benchBottomRemForPrep, benchDockBottomOffset, benchDockStyle } from "@/lib/game/bottomLayout";
 import { groupShopOffers } from "@/lib/game/shopOffers";
 import { pieceInspectAnchor } from "@/lib/game/pieceInspectAnchor";
 import { inspectShopPiece } from "@/lib/game/unitInspect";
@@ -15,32 +17,44 @@ import {
 import { useGameStore } from "@/store/gameStore";
 import { shopSlotAnchor, useFxStore } from "@/store/fxStore";
 import { useUIStore } from "@/store/uiStore";
+import { prepGuideTargetClass } from "@/components/game/PrepGuideLayer";
 import type { PieceType } from "@/types";
 import { cn } from "@/lib/utils";
 import { GameIcon, PieceFigure, WoodButton, WoodPanel } from "@/components/game/ui";
 
 const UI = ASSET_MANIFEST.ui;
 
-export function ShopPanel() {
+export function ShopPanel({
+  dock = false,
+  onStartBattle: onStartBattleExternal,
+}: {
+  dock?: boolean;
+  onStartBattle?: () => void;
+} = {}) {
   const snapshot = useGameStore((state) => state.snapshot);
   const dispatch = useGameStore((state) => state.dispatch);
   const buyFromShop = useGameStore((state) => state.buyFromShop);
   const pawnKebi = useGameStore((state) => state.pawnKebi);
+  const borrowAgainstReturn = useGameStore((state) => state.borrowAgainstReturn);
   const startBattle = useGameStore((state) => state.startBattle);
   const pushToast = useUIStore((state) => state.pushToast);
   const openDialog = useUIStore((state) => state.openDialog);
   const setDomPieceInspect = useUIStore((state) => state.setDomPieceInspect);
+  const prepGuideStep = useUIStore((state) => state.prepGuideStep);
+  const markPrepGuideDone = useUIStore((state) => state.markPrepGuideDone);
   const pushPrepFx = useFxStore((state) => state.pushPrepFx);
   const { shop, state, board } = snapshot;
   const [refreshFlash, setRefreshFlash] = useState(false);
   const [pawnFlash, setPawnFlash] = useState(false);
 
   const shopOffers = useMemo(() => groupShopOffers(shop.slots), [shop.slots]);
+  const journeyNode = journeyNodeAt(state.journeyIndex);
+  const interaction = levelInteractionForNode(journeyNode?.id);
+  const isFinalBattlePrep = Boolean(journeyNode?.isFinal);
   const canPawn = state.kebi >= 1;
   const kebiShortfall =
-    state.stage >= 2 &&
-    state.stage <= 3 &&
-    state.kebi < state.kebiThreshold;
+    state.kebi < state.kebiThreshold &&
+    (state.stage >= 2 || isFinalBattlePrep);
 
   const showShopInspect = (type: PieceType, element: HTMLElement) => {
     setDomPieceInspect({
@@ -105,6 +119,9 @@ export function ShopPanel() {
       pushToast("请先购买棋子再开战", "error");
       return;
     }
+    if (prepGuideStep === 3) {
+      markPrepGuideDone();
+    }
     pushToast("战斗开始", "default");
   };
 
@@ -131,6 +148,15 @@ export function ShopPanel() {
     pushToast(`典当 1 封客批，获得 ${PAWN_KEBI_GOLD} 金币`, "default");
   };
 
+  const onBorrow = () => {
+    if (!borrowAgainstReturn()) {
+      pushToast("当前无法透支", "error");
+      return;
+    }
+    const threshold = useGameStore.getState().snapshot.state.kebiThreshold;
+    pushToast(`透支未来 +${BLOOD_DEBT_GOLD} 金，归乡需 ${threshold} 封客批`, "default");
+  };
+
   const onPawnKebi = () => {
     if (!canPawn) {
       pushToast("暂无客批可典当，需先赢得战斗收信", "error");
@@ -145,19 +171,16 @@ export function ShopPanel() {
     });
   };
 
-  return (
-    <WoodPanel
-      className={cn(
-        "pointer-events-auto mx-auto w-full max-w-5xl transition-[filter,transform]",
-        refreshFlash && "kepi-shop-refresh-flash",
-        pawnFlash && "kepi-pawn-flash",
-      )}
-      innerClassName="px-3 py-3 sm:px-4"
-    >
-      <p className="mb-2 text-[0.6875rem] font-bold tracking-wide text-kepi-ink-muted uppercase">
-        备战 · 第 {state.stage} 关
-      </p>
+  const handleStartBattle = () => {
+    if (onStartBattleExternal) {
+      onStartBattleExternal();
+      return;
+    }
+    onStartBattle();
+  };
 
+  const warnings = (
+    <>
       {kebiShortfall ? (
         <p
           className="mb-2 rounded-md border border-amber-700/35 bg-amber-950/20 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-amber-100/90"
@@ -167,61 +190,84 @@ export function ShopPanel() {
         </p>
       ) : null}
 
-      {state.stage >= 4 ? (
+      {interaction && state.stage >= 4 ? (
         <p
-          className="mb-2 rounded-md border border-red-900/30 bg-red-950/15 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-red-100/90"
+          className="mb-2 rounded-md border border-red-900/35 bg-red-950/18 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-red-100/92"
           role="status"
         >
-          终关预警：械斗火会直扑后排水客。前排筑墙，后排护信。
+          {isFinalBattlePrep
+            ? `终局一战：${interaction.mechanic.label}。胜后依客批 ${state.kebi}/${state.kebiThreshold} 判定归乡结局。`
+            : `${interaction.mechanic.label}：${interaction.mechanic.description}`}
         </p>
       ) : null}
+    </>
+  );
 
-      <div className="mb-2 flex items-center justify-between gap-2 text-xs text-kepi-ink-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <GameIcon src={UI.population} size={16} />
-          人口 {board.length}/{state.population}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <GameIcon src={UI.shopRefresh} size={16} />
-          刷新 {shop.refreshCost} 金
-          <span className="mx-1 opacity-40">·</span>
-          <GameIcon src={UI.shopUpgrade} size={16} />
-          升人口 4 金
-        </span>
-      </div>
+  const shopBody = (
+    <>
+      {warnings}
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-wrap items-end gap-1 sm:gap-2">
+      {!dock ? (
+        <div className="mb-2 flex items-center justify-between gap-2 text-xs text-kepi-ink-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <GameIcon src={UI.population} size={16} />
+            人口 {board.length}/{state.population}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <GameIcon src={UI.shopRefresh} size={16} />
+            刷新 {shop.refreshCost} 金
+            <span className="mx-1 opacity-40">·</span>
+            <GameIcon src={UI.shopUpgrade} size={16} />
+            升人口 4 金
+          </span>
+        </div>
+      ) : null}
+
+      <div
+        className={cn(
+          "flex flex-wrap items-end gap-3",
+          dock ? "kepi-prep-shop-layout justify-between" : "justify-between",
+        )}
+      >
+        <div className="kepi-prep-shop-slots flex min-w-0 flex-1 flex-wrap items-end gap-1 overflow-x-auto sm:gap-2">
           {shopOffers.map((offer) => (
-            <PieceFigure
+            <div
               key={offer.type}
-              type={offer.type}
-              height={88}
-              label={
-                isProtectedPiece(offer.type)
-                  ? `${PIECE_VISUALS[offer.type].label} · 需保护`
-                  : PIECE_VISUALS[offer.type].label
+              className={
+                offer.type === "shuike"
+                  ? prepGuideTargetClass("buy-shuike", prepGuideStep)
+                  : undefined
               }
-              testId="shop-slot"
-              onClick={() => buy(offer.type)}
-              onInspectEnter={(element) => showShopInspect(offer.type, element)}
-              onInspectLeave={() => setDomPieceInspect(null)}
-              badge={
-                <span className="kepi-piece-figure-badge">
-                  {offer.count > 1 ? (
-                    <span className="text-[0.55rem] text-kepi-ink-muted">
-                      ×{offer.count}
-                    </span>
-                  ) : null}
-                  <GameIcon src={UI.gold} size={12} />
-                  {PIECE_TEMPLATES[offer.type].cost}
-                </span>
-              }
-            />
+            >
+              <PieceFigure
+                type={offer.type}
+                height={dock ? 80 : 88}
+                label={
+                  isProtectedPiece(offer.type)
+                    ? `${PIECE_VISUALS[offer.type].label} · 需保护`
+                    : PIECE_VISUALS[offer.type].label
+                }
+                testId="shop-slot"
+                onClick={() => buy(offer.type)}
+                onInspectEnter={(element) => showShopInspect(offer.type, element)}
+                onInspectLeave={() => setDomPieceInspect(null)}
+                badge={
+                  <span className="kepi-piece-figure-badge">
+                    {offer.count > 1 ? (
+                      <span className="text-[0.55rem] text-kepi-ink-muted">
+                        ×{offer.count}
+                      </span>
+                    ) : null}
+                    <GameIcon src={UI.gold} size={12} />
+                    {PIECE_TEMPLATES[offer.type].cost}
+                  </span>
+                }
+              />
+            </div>
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="kepi-prep-shop-actions flex shrink-0 flex-wrap items-center justify-end gap-2">
           <WoodButton
             variant="danger"
             className="px-3 py-2 text-xs kepi-pawn-button"
@@ -235,6 +281,14 @@ export function ShopPanel() {
           >
             <GameIcon src={UI.kebi} size={16} />
             典当 +{PAWN_KEBI_GOLD}
+          </WoodButton>
+          <WoodButton
+            variant="secondary"
+            className="px-3 py-2 text-xs"
+            title={`透支未来 +${BLOOD_DEBT_GOLD} 金，归乡阈值 +1`}
+            onClick={onBorrow}
+          >
+            透支 +{BLOOD_DEBT_GOLD}
           </WoodButton>
           <WoodButton
             className="px-3 py-2 text-xs"
@@ -254,13 +308,48 @@ export function ShopPanel() {
           </WoodButton>
           <WoodButton
             variant="primary"
-            className="px-5 py-2.5 text-sm font-bold tracking-wide"
-            onClick={onStartBattle}
+            className={cn(
+              "px-5 py-2.5 text-sm font-bold tracking-wide",
+              prepGuideTargetClass("start-battle", prepGuideStep),
+            )}
+            onClick={handleStartBattle}
           >
+            <GameIcon src={UI.battleStart} size={18} />
             开战
           </WoodButton>
         </div>
       </div>
+    </>
+  );
+
+  if (dock) {
+    return (
+      <div
+        className={cn(
+          "kepi-prep-shop pointer-events-auto transition-[filter,transform]",
+          refreshFlash && "kepi-shop-refresh-flash",
+          pawnFlash && "kepi-pawn-flash",
+        )}
+      >
+        {shopBody}
+      </div>
+    );
+  }
+
+  return (
+    <WoodPanel
+      className={cn(
+        "pointer-events-auto mx-auto w-full max-w-5xl transition-[filter,transform]",
+        refreshFlash && "kepi-shop-refresh-flash",
+        pawnFlash && "kepi-pawn-flash",
+      )}
+      innerClassName="px-3 py-3 sm:px-4"
+    >
+      <p className="mb-2 text-[0.6875rem] font-bold tracking-wide text-kepi-ink-muted uppercase">
+        备战 · 归途 {state.journeyIndex + 1}/{state.totalNodes}
+        {journeyNode ? ` · ${journeyNode.label}` : ""}
+      </p>
+      {shopBody}
     </WoodPanel>
   );
 }
@@ -272,7 +361,7 @@ export function BenchStrip() {
   const setSelectedPiece = useGameStore((state) => state.setSelectedPiece);
   const sellSelected = useGameStore((state) => state.sellSelected);
   const pushToast = useUIStore((state) => state.pushToast);
-  const letterExpanded = useUIStore((state) => state.letterStripExpanded);
+  const prepDockExpanded = useUIStore((state) => state.prepDockExpanded);
   const bottomDockHeightPx = useUIStore((state) => state.bottomDockHeightPx);
   const setDomPieceInspect = useUIStore((state) => state.setDomPieceInspect);
   const [rootFontSizePx, setRootFontSizePx] = useState(16);
@@ -289,16 +378,13 @@ export function BenchStrip() {
   }, []);
 
   const unplaced = board.filter((piece) => piece.position === null);
-  const fallbackBottomRem = benchBottomRem(true, letterExpanded);
+  const fallbackBottomRem = benchBottomRemForPrep(prepDockExpanded);
   const benchBottom = benchDockBottomOffset(
     bottomDockHeightPx,
     rootFontSizePx,
     fallbackBottomRem,
   );
-  const benchStyle = useMemo(
-    () => benchDockStyle(benchBottom),
-    [benchBottom],
-  );
+  const benchStyle = useMemo(() => benchDockStyle(benchBottom), [benchBottom]);
 
   if (phase !== "prep" || unplaced.length === 0) return null;
 

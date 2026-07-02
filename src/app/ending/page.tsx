@@ -15,8 +15,8 @@ const PRESETS: Record<
   perfect_homecoming: {
     stage: 4,
     narrative: {
-      kebi: 4,
-      kebiThreshold: 4,
+      kebi: 5,
+      kebiThreshold: 5,
       pawnedKebi: 0,
       homeRepairTier: 3,
       waterGuestSurvived: true,
@@ -26,8 +26,8 @@ const PRESETS: Record<
   regretful_stay: {
     stage: 4,
     narrative: {
-      kebi: 2,
-      kebiThreshold: 4,
+      kebi: 3,
+      kebiThreshold: 5,
       pawnedKebi: 1,
       homeRepairTier: 2,
       waterGuestSurvived: true,
@@ -38,7 +38,7 @@ const PRESETS: Record<
     stage: 2,
     narrative: {
       kebi: 1,
-      kebiThreshold: 4,
+      kebiThreshold: 5,
       pawnedKebi: 0,
       homeRepairTier: 0,
       waterGuestSurvived: false,
@@ -57,7 +57,7 @@ export default function EndingPreviewPage() {
         <div>
           <h1 className="text-2xl font-semibold">结局预览</h1>
           <p className="text-sm text-muted-foreground">
-            V2.0 三结局：完美归乡、遗憾留守、风浪抢救 — 共享手势接信过场。
+            V3.1 三结局：完美归乡、遗憾留守、风浪抢救 — 乡音符开局与抓信首尾呼应。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

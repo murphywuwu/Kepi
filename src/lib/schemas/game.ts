@@ -36,8 +36,11 @@ export const endingTypeSchema = z.enum([
 
 export const scenePhaseSchema = z.enum([
   "prep",
+  "opening_buff",
   "battle",
   "settlement",
+  "pawn_shop",
+  "campfire",
   "ending",
   "settings",
 ]);
@@ -45,6 +48,9 @@ export const scenePhaseSchema = z.enum([
 export const gameStateSchema = z.object({
   stage: z.number().int().min(1),
   totalStages: z.number().int().min(1),
+  totalNodes: z.number().int().min(1).default(7),
+  journeyIndex: z.number().int().min(0).default(0),
+  currentNodeId: z.string().min(1).default("camp-1"),
   survival: z.number().int().min(0),
   kebi: z.number().int().min(0),
   kebiThreshold: z.number().int().min(1),
@@ -61,7 +67,10 @@ export const gameStateSchema = z.object({
   winStreak: z.number().int().min(0),
   loseStreak: z.number().int().min(0),
   pawnedKebi: z.number().int().min(0),
+  bloodDebtCount: z.number().int().min(0).default(0),
   roundPawnCount: z.number().int().min(0).default(0),
+  roundBloodDebt: z.boolean().default(false),
+  nextBattleEnemyHpFactor: z.number().min(0.1).max(2).default(1),
   result: gameResultSchema,
   endingType: endingTypeSchema.default(null),
 });
@@ -117,6 +126,12 @@ export const battleEventSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("waterGuestDied"),
+  }),
+  z.object({
+    type: z.literal("leafFallStart"),
+  }),
+  z.object({
+    type: z.literal("leafFallEnd"),
   }),
 ]);
 
@@ -192,6 +207,38 @@ export const gameSnapshotSchema = z.object({
     .optional(),
   lastBattleResult: battleResultSchema.nullable().optional(),
   settlement: settlementSummarySchema.nullable().optional(),
+  openingBuff: z
+    .object({
+      offered: z.object({
+        id: z.string(),
+        label: z.string(),
+        description: z.string(),
+        atkMultiplier: z.number(),
+        goldBonus: z.number().optional(),
+      }),
+      caught: z.boolean(),
+      resolved: z.boolean(),
+    })
+    .nullable()
+    .optional(),
+  activeOpeningBuff: z
+    .object({
+      id: z.string(),
+      label: z.string(),
+      description: z.string(),
+      atkMultiplier: z.number(),
+      goldBonus: z.number().optional(),
+    })
+    .nullable()
+    .optional(),
+  campfire: z
+    .object({
+      scenarioId: z.string(),
+      choiceAId: z.string(),
+      choiceBId: z.string(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export type GameSnapshotInput = z.infer<typeof gameSnapshotSchema>;

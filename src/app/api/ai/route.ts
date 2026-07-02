@@ -1,3 +1,4 @@
+import { campfireScenarioForNode } from "@/data/campfire";
 import { pickFallbackLetter } from "@/lib/ai/fallback";
 import {
   generateTurnNarrative,
@@ -7,6 +8,7 @@ import { generateDigitalLetter } from "@/lib/ai/server";
 import type {
   AILetterResponse,
   AIResponse,
+  CampfireCopyResult,
   TurnNarrative,
 } from "@/lib/ai/types";
 import { aiRequestSchema } from "@/lib/schemas/ai";
@@ -20,19 +22,17 @@ const DEFAULT_LETTER_INPUT = {
   battleSummary: "AI 代理不可用",
 };
 
-const DEFAULT_NARRATIVE_INPUT = {
-  turn: 1,
-  events: {
-    didPawn: false,
-    pawnCount: 0,
-    waterGuestDied: false,
-    waterGuestSurvived: false,
-    won: false,
-  },
-  currentKebi: 0,
-  currentHomeRepair: 0,
-  survival: 2,
-};
+function campfireFallback(input: {
+  nodeId: string;
+}): CampfireCopyResult {
+  const scenario = campfireScenarioForNode(input.nodeId);
+  return {
+    prompt: scenario.prompt,
+    choiceA: scenario.choices[0]!.title,
+    choiceB: scenario.choices[1]!.title,
+    fromAI: false,
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -60,6 +60,13 @@ export async function POST(request: Request) {
           { status: 503 },
         );
       }
+    }
+
+    if (parsed.data.kind === "campfire-choice-copy") {
+      const fallback = campfireFallback(parsed.data.input);
+      return NextResponse.json({ ok: false, fallback } satisfies AIResponse, {
+        status: 503,
+      });
     }
 
     try {

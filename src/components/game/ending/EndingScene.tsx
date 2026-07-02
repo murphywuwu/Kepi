@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   ARCHIVAL_LETTERS,
   ENDING_SCENE_COPY,
@@ -7,12 +8,14 @@ import {
   endingSubtitle,
   type EndingNarrativeContext,
 } from "@/data/letters";
+import { ASSET_MANIFEST } from "@/data/assets";
 import { requestDigitalLetters } from "@/lib/ai/client";
 import type { AILetterResponse, AIPromptInput } from "@/lib/ai/types";
+import { endingArtworkSrc } from "@/lib/game/endingUi";
 import { cn } from "@/lib/utils";
 import type { EndingType } from "@/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { WoodButton } from "@/components/game/ui";
+import { GameIcon, WoodButton } from "@/components/game/ui";
 import { GestureLayer, type GestureMode } from "./GestureLayer";
 import {
   DigitalLetterCard,
@@ -20,6 +23,9 @@ import {
   LetterViewer,
 } from "./LetterViewer";
 import { useEndingAudio } from "./useEndingAudio";
+
+const ENDING = ASSET_MANIFEST.ending;
+const UI = ASSET_MANIFEST.ui;
 
 export type EndingSceneProps = {
   endingType: EndingType;
@@ -57,6 +63,7 @@ export function EndingScene({
     () => ARCHIVAL_LETTERS.slice(0, letterCount),
     [letterCount],
   );
+  const kebiReady = narrative.kebi >= narrative.kebiThreshold;
 
   const aiResult =
     endingType === "perfect_homecoming"
@@ -73,7 +80,7 @@ export function EndingScene({
       survival: endingType === "storm_rescue" ? 0 : 1,
       battleSummary:
         battleSummary ??
-        `第 ${stage} 关 · 客批 ${narrative.kebi}/${narrative.kebiThreshold}`,
+        `归途终局 · 客批 ${narrative.kebi}/${narrative.kebiThreshold}`,
       result: aiResult,
     }),
     [stage, narrative, battleSummary, aiResult, endingType],
@@ -141,13 +148,69 @@ export function EndingScene({
       data-ending-type={endingType}
       aria-label="结局过场"
     >
+      <Image
+        src={endingArtworkSrc(endingType)}
+        alt=""
+        fill
+        priority
+        className="object-cover object-center"
+        sizes="100vw"
+      />
+
+      {endingType === "storm_rescue" ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[url('/images/ending/storm-bg.svg')] bg-cover bg-center opacity-35 mix-blend-overlay"
+        />
+      ) : null}
+
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-black/10 to-black/55",
+          endingType === "perfect_homecoming" && "from-amber-950/25 via-transparent to-amber-950/50",
+          endingType === "storm_rescue" && "from-slate-950/55 via-slate-950/25 to-slate-950/70",
+        )}
+      />
+
+      <div aria-hidden className="kepi-ending-vignette pointer-events-none absolute inset-0" />
+
+      {endingType === "perfect_homecoming" ? (
+        <div aria-hidden className="kepi-ending-lanterns pointer-events-none absolute inset-0" />
+      ) : null}
+
+      {endingType === "storm_rescue" ? (
+        <div
+          aria-hidden
+          className="kepi-ending-wave-foreground pointer-events-none absolute inset-0"
+        />
+      ) : null}
+
       <div className="relative z-10 flex flex-col gap-6 p-6 md:p-10">
-        <header className="space-y-2 text-center">
+        <header className="space-y-3 text-center">
+          <div className="mx-auto flex max-w-lg flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-100/20 bg-black/35 px-3 py-1 text-[0.6875rem] text-amber-100/90">
+              <GameIcon src={UI.kebi} size={14} />
+              客批 {narrative.kebi}/{narrative.kebiThreshold}
+            </span>
+            {kebiReady ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-950/35 px-3 py-1 text-[0.6875rem] text-emerald-50/95">
+                <GameIcon src={ENDING.homewardTicketProp} size={16} />
+                归乡票就绪
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/20 bg-black/30 px-3 py-1 text-[0.6875rem] text-amber-100/75">
+                <GameIcon src={ENDING.homewardTicketProp} size={16} />
+                归乡票未足
+              </span>
+            )}
+          </div>
+
           <p className="text-xs tracking-[0.35em] text-amber-200/70 uppercase">
             {copy.badge}
           </p>
           <h1 className="font-heading text-3xl font-bold md:text-4xl">{copy.title}</h1>
-          <p className="mx-auto max-w-2xl text-sm text-amber-100/80">{copy.intro}</p>
+          <p className="mx-auto max-w-2xl text-sm text-amber-100/85">{copy.intro}</p>
           {narrative.pawnedKebi > 0 ? (
             <p className="text-xs text-amber-200/60">
               本局曾典当 {narrative.pawnedKebi} 封客批 · 土楼庇护 {narrative.homeRepairTier} 阶
@@ -163,13 +226,10 @@ export function EndingScene({
               onCatch={handleCatch}
               onSlowTime={() => setSlowTime(true)}
               gestureMode={gestureMode}
+              slowTime={slowTime}
               fragmentLabel={fragmentLabel}
             />
-            {slowTime ? (
-              <p className="text-center text-xs text-amber-200/80">
-                子弹时间 · 信件飘落变慢
-              </p>
-            ) : null}
+
             {caughtCount >= letterCount ? (
               <div className="flex justify-center">
                 <WoodButton
@@ -236,9 +296,18 @@ export function EndingScene({
 
         {step === "finale" ? (
           <footer className="space-y-4 text-center">
-            <p className="mx-auto max-w-2xl rounded-lg bg-black/35 px-4 py-3 text-sm leading-relaxed text-amber-50/95">
-              {endingSubtitle(endingType, narrative)}
-            </p>
+            <div
+              className="kepi-ending-subtitle-mask relative mx-auto max-w-2xl px-4 py-5"
+              style={{
+                backgroundImage: `linear-gradient(rgba(12,10,8,0.55), rgba(12,10,8,0.55)), url('${ENDING.subtitleMask}')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <p className="text-sm leading-relaxed text-amber-50/95">
+                {endingSubtitle(endingType, narrative)}
+              </p>
+            </div>
             <div className="flex flex-wrap justify-center gap-3">
               {onComplete ? (
                 <WoodButton
@@ -266,27 +335,10 @@ export function EndingScene({
         ) : null}
       </div>
 
-      <div
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,220,160,0.18),transparent_55%)]",
-          slowTime ? "animate-pulse" : "",
-          endingType === "perfect_homecoming"
-            ? "bg-[radial-gradient(circle_at_50%_80%,rgba(255,200,120,0.28),transparent_60%)]"
-            : "",
-        )}
-      />
-      <div aria-hidden className="kepi-ending-vignette pointer-events-none absolute inset-0" />
-      {endingType === "perfect_homecoming" ? (
+      {slowTime ? (
         <div
           aria-hidden
-          className="kepi-ending-lanterns pointer-events-none absolute inset-0"
-        />
-      ) : null}
-      {endingType === "storm_rescue" ? (
-        <div
-          aria-hidden
-          className="kepi-ending-wave-foreground pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 z-[5] bg-[radial-gradient(circle_at_50%_40%,rgba(255,220,160,0.22),transparent_60%)] animate-pulse"
         />
       ) : null}
     </section>

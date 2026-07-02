@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { EndingScene } from "@/components/game/ending";
+import type { GestureMode } from "@/components/game/ending";
 import {
   endingBattleSummaryFromSnapshot,
   endingContextFromSnapshot,
   resolveSnapshotEndingType,
 } from "@/lib/game/ending";
+import { loadSettings } from "@/lib/storage/settings";
 import { useGameStore } from "@/store/gameStore";
 
 export function EndingPhase() {
@@ -14,6 +17,11 @@ export function EndingPhase() {
   const { state } = snapshot;
   const endingType = resolveSnapshotEndingType(snapshot);
   const narrative = endingContextFromSnapshot(snapshot);
+  const [gestureMode, setGestureMode] = useState<GestureMode>("pointer");
+
+  useEffect(() => {
+    setGestureMode(loadSettings().gestureEnabled ? "gesture" : "pointer");
+  }, []);
 
   return (
     <EndingScene
@@ -22,7 +30,7 @@ export function EndingPhase() {
       narrative={narrative}
       stage={state.stage}
       battleSummary={endingBattleSummaryFromSnapshot(snapshot)}
-      gestureMode="pointer"
+      gestureMode={gestureMode}
       onComplete={() => resetGame()}
     />
   );

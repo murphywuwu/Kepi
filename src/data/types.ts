@@ -43,7 +43,7 @@ export type StageDefinition = {
   scaling: number;
   enemyPool: readonly EnemyType[];
   prepTimeSec: number;
-  difficulty: "tutorial" | "normal" | "hard";
+  difficulty: "tutorial" | "normal" | "hard" | "extreme";
   aiDynamic: boolean;
   boardAsset: string;
 };

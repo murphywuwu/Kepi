@@ -1,13 +1,17 @@
-import { pickFallbackLetter } from "./fallback";
+import { campfireScenarioForNode } from "@/data/campfire";
 import { pickFallbackNarrative } from "./narrativeFallback";
 import type {
-  AIPromptInput,
   AIRequest,
   AIResponse,
+  CampfireCopyInput,
+  CampfireCopyResult,
   DigitalLetterResult,
   TurnNarrativeInput,
   TurnNarrativeResult,
+  AIPromptInput,
 } from "./types";
+import { pickFallbackLetter } from "./fallback";
+import { AI_REQUEST_TIMEOUT_MS } from "./types";
 
 export async function requestDigitalLetter(
   input: AIPromptInput,
@@ -19,7 +23,7 @@ export async function requestDigitalLetter(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
     });
 
     const data = (await response.json()) as AIResponse;
@@ -45,7 +49,7 @@ export async function requestTurnNarrative(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
     });
 
     const data = (await response.json()) as AIResponse;
@@ -58,6 +62,42 @@ export async function requestTurnNarrative(
     return { narrative: pickFallbackNarrative(input), fromAI: false };
   } catch {
     return { narrative: pickFallbackNarrative(input), fromAI: false };
+  }
+}
+
+function localCampfireFallback(input: CampfireCopyInput): CampfireCopyResult {
+  const scenario = campfireScenarioForNode(input.nodeId);
+  return {
+    prompt: scenario.prompt,
+    choiceA: scenario.choices[0]!.title,
+    choiceB: scenario.choices[1]!.title,
+    fromAI: false,
+  };
+}
+
+export async function requestCampfireCopy(
+  input: CampfireCopyInput,
+): Promise<CampfireCopyResult> {
+  const payload: AIRequest = { kind: "campfire-choice-copy", input };
+
+  try {
+    const response = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
+    });
+
+    const data = (await response.json()) as AIResponse;
+    if (data.ok && "choiceA" in data.data) {
+      return { ...data.data, fromAI: true };
+    }
+    if (!data.ok && "choiceA" in data.fallback) {
+      return { ...data.fallback, fromAI: false };
+    }
+    return localCampfireFallback(input);
+  } catch {
+    return localCampfireFallback(input);
   }
 }
 

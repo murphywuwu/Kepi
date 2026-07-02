@@ -70,7 +70,7 @@ export async function generateTurnNarrative(
         { role: "user", content: buildTurnNarrativeUserPrompt(input) },
       ],
     }),
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(1500),
   });
 
   if (!response.ok) {

@@ -1,14 +1,18 @@
 import type { EnemyType } from "@/types";
 import { BALANCE, tulouStageForRepair } from "./balance";
 import { ENEMY_TYPES } from "./enemies";
+import { levelInteractionForStage } from "./levelInteractions";
 import type { StageDefinition } from "./types";
 
-/** Per-stage enemy pools — V2.0 §7.5 (4-stage micro-run). */
+/** Per-stage enemy pools — V3 seven-level route. */
 export const STAGE_ENEMY_POOLS: Record<number, readonly EnemyType[]> = {
   1: ["qianhaibei", "luyinguanli"],
-  2: ["qianhaibei", "luyinguanli", "zhuzaiqi"],
-  3: ["zhuzaiqi", "ehushan", "hongtouchuan"],
-  4: ENEMY_TYPES,
+  2: ["qianhaibei", "luyinguanli"],
+  3: ["luyinguanli", "qianhaibei", "zhuzaiqi"],
+  4: ["zhuzaiqi", "luyinguanli", "ehushan"],
+  5: ["ehushan", "zhuzaiqi", "luyinguanli", "hongtouchuan"],
+  6: ["hongtouchuan", "ehushan", "zhuzaiqi", "xiedouhuo"],
+  7: ENEMY_TYPES,
 };
 
 function enemyPoolForStage(stage: number): readonly EnemyType[] {
@@ -16,31 +20,38 @@ function enemyPoolForStage(stage: number): readonly EnemyType[] {
 }
 
 function stageScaling(stage: number): number {
-  if (stage <= 1) return 1;
-  if (stage <= 3) return 1.5;
-  return 2;
+  if (stage <= 2) return 1;
+  if (stage === 3) return 1.35;
+  if (stage === 4) return 1.7;
+  if (stage === 5) return 1.95;
+  if (stage === 6) return 2.15;
+  return 2.5;
 }
 
 function enemyCountForStage(stage: number): number {
-  if (stage <= 1) return 3;
-  if (stage <= 3) return 4;
+  if (stage <= 2) return 3;
+  if (stage <= 4) return 4;
   return 5;
 }
 
 const STAGE_NAMES = [
+  "南洋余波",
   "海禁余波",
   "关隘盘查",
   "契约束缚",
-  "风浪前夕",
+  "饿虎山",
+  "红头船",
+  "风浪归乡",
 ] as const;
 
-/** Four-stage micro-run — V2.0. */
+/** Seven-level run — V3 interaction design v1. */
 export const STAGES: readonly StageDefinition[] = Array.from(
-  { length: 4 },
+  { length: 7 },
   (_, index) => {
     const stage = index + 1;
     const difficulty =
-      stage <= 2 ? "tutorial" : stage <= 4 ? "normal" : "hard";
+      stage <= 2 ? "tutorial" : stage <= 3 ? "normal" : stage <= 6 ? "hard" : "extreme";
+    const interaction = levelInteractionForStage(stage);
 
     const expectedHomeRepair = Math.min(
       100,
@@ -49,13 +60,13 @@ export const STAGES: readonly StageDefinition[] = Array.from(
 
     return {
       stage,
-      name: STAGE_NAMES[index]!,
+      name: interaction?.title ?? STAGE_NAMES[index]!,
       enemyCount: enemyCountForStage(stage),
       scaling: stageScaling(stage),
-      enemyPool: enemyPoolForStage(stage),
+      enemyPool: interaction?.enemyComposition ?? enemyPoolForStage(stage),
       prepTimeSec: 30,
       difficulty,
-      aiDynamic: stage >= 4,
+      aiDynamic: stage >= 7,
       boardAsset: tulouStageForRepair(expectedHomeRepair).boardAsset,
     } satisfies StageDefinition;
   },

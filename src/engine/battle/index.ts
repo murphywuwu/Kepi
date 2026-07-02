@@ -52,6 +52,9 @@ type BattleRuntime = {
   allyPieces: Piece[];
   cooldowns: Map<string, number>;
   tulouBuffs: TulouRuntimeBuffs;
+  openingBuffAtkMultiplier: number;
+  leafFallActive: boolean;
+  leafFallLifesteal: number;
 };
 
 export function calcDamage(atk: number, armor: number): number {
@@ -79,14 +82,19 @@ export function enemyTypesForStage(stage: number): EnemyType[] {
   return enemyTypesForBattle(stage, []);
 }
 
-export function spawnEnemiesForStage(stage: number, allies: Piece[] = []): Enemy[] {
+export function spawnEnemiesForStage(
+  stage: number,
+  allies: Piece[] = [],
+  options?: { scalingOverride?: number; hpFactor?: number },
+): Enemy[] {
   const types = enemyTypesForBattle(stage, allies);
-  const scale = stageScaling(stage);
+  const scale = options?.scalingOverride ?? stageScaling(stage);
+  const hpFactor = (options?.hpFactor ?? 1) * BATTLE_ENEMY_HP_FACTOR;
   const positions = layoutEnemyPositions(types.length);
 
   return types.map((type, index) => {
     const stats = scaledEnemyStats(type, scale);
-    const scaledHp = Math.max(1, Math.round(stats.hp * BATTLE_ENEMY_HP_FACTOR));
+    const scaledHp = Math.max(1, Math.round(stats.hp * hpFactor));
 
     return {
       id: `enemy_${stage}_${index}`,
@@ -290,22 +298,40 @@ function syncUnitsToSnapshot(
 }
 
 function runtimeFromSnapshot(battle: BattleSnapshot): BattleRuntime {
-  const atkMultiplier = hakkaAtkMultiplier(battle.allies);
+  const openingMult = battle.openingBuffAtkMultiplier ?? 1;
+  const atkMultiplier = hakkaAtkMultiplier(battle.allies) * openingMult;
   const runtimeBuffs = runtimeBuffsFromSnapshot(battle.tulouBuffs);
+  const elapsed = battle.tick * BATTLE_TICK_MS;
+  const leafFallConfig = BALANCE.clanSynergy.leafFall;
+  const leafFallActive =
+    Boolean(battle.leafFall?.triggered) &&
+    elapsed < (battle.leafFall?.activeUntilMs ?? 0);
+
   return {
     allyUnits: battle.allies.map((ally) => toCombatUnit(ally, atkMultiplier)),
     enemyUnits: battle.enemies.map(enemyToCombatUnit),
     allyPieces: battle.allies,
     cooldowns: new Map(Object.entries(battle.cooldowns ?? {})),
     tulouBuffs: runtimeBuffs,
+    openingBuffAtkMultiplier: openingMult,
+    leafFallActive,
+    leafFallLifesteal: leafFallActive ? leafFallConfig.lifestealRatio : 0,
   };
 }
 
-function unitAtkSpeed(unit: CombatUnit, tier: HomeRepairTier): number {
+function unitAtkSpeed(
+  unit: CombatUnit,
+  tier: HomeRepairTier,
+  leafFallActive: boolean,
+): number {
+  let speed = unit.atkSpeed;
   if (unit.side === "ally") {
-    return effectiveAllyAtkSpeed(unit.atkSpeed, tier);
+    speed = effectiveAllyAtkSpeed(unit.atkSpeed, tier);
+    if (leafFallActive) {
+      speed *= 1 + BALANCE.clanSynergy.leafFall.atkSpeedBonus;
+    }
   }
-  return unit.atkSpeed;
+  return speed;
 }
 
 function applyDamageToTarget(
@@ -388,7 +414,11 @@ function buildBattleResult(
 
 export function createBattleSnapshot(input: BattleInput): BattleSnapshot {
   const rawEnemies = structuredClone(
-    input.enemies ?? spawnEnemiesForStage(input.stage, input.allies),
+    input.enemies ??
+      spawnEnemiesForStage(input.stage, input.allies, {
+        scalingOverride: input.scalingOverride,
+        hpFactor: input.enemyHpFactorOverride,
+      }),
   );
   const allies = structuredClone(
     input.allies.filter((piece) => piece.hp > 0),
@@ -415,7 +445,45 @@ export function createBattleSnapshot(input: BattleInput): BattleSnapshot {
     finished: false,
     waterGuest,
     tulouBuffs: serializeTulouBuffs(runtimeBuffs),
+    openingBuffAtkMultiplier: input.openingBuffAtkMultiplier ?? 1,
+    leafFall: { triggered: false, activeUntilMs: 0 },
   };
+}
+
+function maybeTriggerLeafFall(
+  battle: BattleSnapshot,
+  allies: Piece[],
+  elapsedMs: number,
+): { battle: BattleSnapshot; events: BattleEvent[] } {
+  const config = BALANCE.clanSynergy.leafFall;
+  const hakkaCount = allies.filter((piece) => piece.clan === "hakka").length;
+  const leafFall = battle.leafFall ?? { triggered: false, activeUntilMs: 0 };
+  const events: BattleEvent[] = [];
+
+  if (!leafFall.triggered && hakkaCount >= config.minClanCount) {
+    events.push({ type: "leafFallStart" });
+    return {
+      battle: {
+        ...battle,
+        leafFall: {
+          triggered: true,
+          activeUntilMs: elapsedMs + config.durationMs,
+        },
+      },
+      events,
+    };
+  }
+
+  if (
+    leafFall.triggered &&
+    leafFall.activeUntilMs > 0 &&
+    elapsedMs >= leafFall.activeUntilMs &&
+    battle.events.every((event) => event.type !== "leafFallEnd")
+  ) {
+    events.push({ type: "leafFallEnd" });
+  }
+
+  return { battle, events };
 }
 
 export function advanceBattleTick(battle: BattleSnapshot): {
@@ -429,10 +497,15 @@ export function advanceBattleTick(battle: BattleSnapshot): {
 
   const maxTicks = BATTLE_MAX_MS / BATTLE_TICK_MS;
   const tick = battle.tick;
-  const { allyUnits, enemyUnits, allyPieces, cooldowns, tulouBuffs } =
-    runtimeFromSnapshot(battle);
+  const elapsedMs = tick * BATTLE_TICK_MS;
+  let workingBattle = battle;
+  const leafTrigger = maybeTriggerLeafFall(workingBattle, battle.allies, elapsedMs);
+  workingBattle = leafTrigger.battle;
+
+  const { allyUnits, enemyUnits, allyPieces, cooldowns, tulouBuffs, leafFallActive, leafFallLifesteal } =
+    runtimeFromSnapshot(workingBattle);
   const units = [...allyUnits, ...enemyUnits];
-  const newEvents: BattleEvent[] = [];
+  const newEvents: BattleEvent[] = [...leafTrigger.events];
 
   const livingAllies = allyUnits.filter((unit) => unit.hp > 0);
   const livingEnemies = enemyUnits.filter((unit) => unit.hp > 0);
@@ -451,7 +524,7 @@ export function advanceBattleTick(battle: BattleSnapshot): {
     );
     const synced = syncUnitsToSnapshot(
       {
-        ...battle,
+        ...workingBattle,
         tick,
         elapsedMs: tick * BATTLE_TICK_MS,
         events,
@@ -469,7 +542,7 @@ export function advanceBattleTick(battle: BattleSnapshot): {
     if (unit.hp <= 0) continue;
 
     const elapsed = tick * BATTLE_TICK_MS;
-    const atkSpeed = unitAtkSpeed(unit, tulouBuffs.tier);
+    const atkSpeed = unitAtkSpeed(unit, tulouBuffs.tier, leafFallActive);
     const intervalMs = atkSpeed > 0 ? 1000 / atkSpeed : Infinity;
     const readyAt = cooldowns.get(unit.id) ?? 0;
 
@@ -487,6 +560,11 @@ export function advanceBattleTick(battle: BattleSnapshot): {
       damage,
     });
     newEvents.push(...tulouEvents);
+
+    if (unit.side === "ally" && leafFallLifesteal > 0 && damage > 0) {
+      const heal = Math.max(1, Math.round(damage * leafFallLifesteal));
+      unit.hp = Math.min(unit.maxHp, unit.hp + heal);
+    }
 
     if (target.hp <= 0) {
       newEvents.push({ type: "kill", unitId: target.id });
@@ -523,7 +601,7 @@ export function advanceBattleTick(battle: BattleSnapshot): {
 
   const nextBattle = syncUnitsToSnapshot(
     {
-      ...battle,
+      ...workingBattle,
       tick: nextTick,
       elapsedMs: nextTick * BATTLE_TICK_MS,
       events,

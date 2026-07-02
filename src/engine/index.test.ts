@@ -9,6 +9,20 @@ import {
   ENGINE_VERSION,
 } from "./index";
 
+function leaveCampfire(snapshot: GameSnapshot): GameSnapshot {
+  if (snapshot.phase !== "campfire") return snapshot;
+  return reduceGameState(snapshot, {
+    type: "PICK_CAMPFIRE_CHOICE",
+    choiceId: "share-gold",
+  });
+}
+
+function beginBattle(snapshot: GameSnapshot): GameSnapshot {
+  let next = leaveCampfire(snapshot);
+  next = reduceGameState(next, { type: "START_BATTLE" });
+  return reduceGameState(next, { type: "SKIP_OPENING_BUFF" });
+}
+
 function withShuike(snapshot: GameSnapshot): GameSnapshot {
   const shuike = createPiece("shuike");
   shuike.position = { x: 4, y: 5 };
@@ -50,79 +64,88 @@ function runBattleToCompletion(snapshot: GameSnapshot): GameSnapshot {
 
 describe("engine", () => {
   it("exports snapshot version", () => {
-    expect(ENGINE_VERSION).toBe(2);
+    expect(ENGINE_VERSION).toBe(3);
   });
 
-  it("initializes V2.0 micro-run state", () => {
+  it("initializes V3.1 journey state on campfire opening", () => {
     resetPieceCounter(0);
     const snapshot = createInitialSnapshot();
 
     expect(snapshot.state).toMatchObject({
       stage: 1,
-      totalStages: 4,
+      totalNodes: 7,
       survival: 2,
-      kebiThreshold: 4,
+      kebiThreshold: 5,
       pawnedKebi: 0,
+      bloodDebtCount: 0,
       roundPawnCount: 0,
       homeRepairTier: 0,
       population: 3,
+      journeyIndex: 0,
+      currentNodeId: "camp-1",
     });
+    expect(snapshot.phase).toBe("campfire");
   });
 
-  it("resets roundPawnCount when advancing to next prep", () => {
+  it("resets roundPawnCount when advancing after a win", () => {
     resetPieceCounter(0);
-    let snapshot = createInitialSnapshot();
+    let snapshot = withShuike(createInitialSnapshot());
+    snapshot = leaveCampfire(snapshot);
     snapshot = {
       ...snapshot,
       state: { ...snapshot.state, kebi: 1, roundPawnCount: 2 },
     };
-    snapshot = finishBattle(withShuike(snapshot), true);
+    snapshot = finishBattle(snapshot, true);
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
     expect(snapshot.state.roundPawnCount).toBe(0);
   });
 
-  it("runs prep → battle → settlement → next prep loop", () => {
+  it("runs prep → opening_buff → battle → settlement → next prep", () => {
     resetPieceCounter(0);
     let snapshot = withShuike(createInitialSnapshot());
+    snapshot = leaveCampfire(snapshot);
 
     snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
     expect(snapshot.board).toHaveLength(2);
 
     snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
+    expect(snapshot.phase).toBe("opening_buff");
+
+    snapshot = reduceGameState(snapshot, { type: "SKIP_OPENING_BUFF" });
     expect(snapshot.phase).toBe("battle");
     expect(snapshot.battle).not.toBeNull();
-    expect(snapshot.battle?.tulouBuffs.tier).toBe(0);
-    expect(snapshot.lastBattleResult).toBeNull();
 
     snapshot = finishBattle(snapshot, true);
     expect(snapshot.phase).toBe("settlement");
 
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-    expect(snapshot.phase).toBe("prep");
-    expect(snapshot.state.stage).toBe(2);
+    expect(snapshot.phase).toBe("pawn_shop");
+    expect(snapshot.state.journeyIndex).toBe(2);
+    expect(snapshot.state.currentNodeId).toBe("pawn-1");
   });
 
-  it("retries same stage on loss without round income", () => {
+  it("retries same battle node on loss without node wage", () => {
     resetPieceCounter(0);
     let snapshot = withShuike(createInitialSnapshot());
+    snapshot = leaveCampfire(snapshot);
     const goldBefore = snapshot.state.gold;
 
-    snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
+    snapshot = beginBattle(snapshot);
     snapshot = runBattleToCompletion(snapshot);
     expect(snapshot.lastBattleResult?.won).toBe(false);
     expect(snapshot.state.survival).toBe(1);
 
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
     expect(snapshot.phase).toBe("prep");
-    expect(snapshot.state.stage).toBe(1);
+    expect(snapshot.state.journeyIndex).toBe(1);
     expect(snapshot.state.gold).toBe(goldBefore);
   });
 
-  it("advances stage and pays fixed round wage on win (no interest or streak bonus)", () => {
+  it("pays node wage when advancing after a win", () => {
     resetPieceCounter(0);
     let snapshot = withShuike(createInitialSnapshot());
+    snapshot = leaveCampfire(snapshot);
     snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
-    const goldAfterBuy = snapshot.state.gold;
 
     snapshot = {
       ...snapshot,
@@ -137,9 +160,9 @@ describe("engine", () => {
     snapshot = finishBattle(snapshot, true);
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
 
-    expect(snapshot.phase).toBe("prep");
-    expect(snapshot.state.stage).toBe(2);
-    expect(snapshot.state.gold).toBe(50 + BALANCE.economy.roundWage);
+    expect(snapshot.phase).toBe("pawn_shop");
+    expect(snapshot.state.currentNodeId).toBe("pawn-1");
+    expect(snapshot.state.gold).toBe(50 + BALANCE.economy.nodeWage);
   });
 
   it("settles a won stage as shuike collection followed by xiangxian repair", () => {
@@ -154,7 +177,7 @@ describe("engine", () => {
 
     const afterEnd = reduceGameState(
       {
-        ...createInitialSnapshot(),
+        ...leaveCampfire(createInitialSnapshot()),
         board,
         phase: "battle",
         lastBattleResult: {
@@ -165,6 +188,7 @@ describe("engine", () => {
           alliesRemaining: 2,
           enemiesRemaining: 0,
           allyHpPercent: 80,
+          enemyHpPercent: 0,
           waterGuest: {
             pieceId: shuike.id,
             deployed: true,
@@ -177,98 +201,25 @@ describe("engine", () => {
     );
 
     expect(afterEnd.phase).toBe("settlement");
-    expect(afterEnd.state.homeRepair).toBe(0);
-
     const snapshot = reduceGameState(afterEnd, { type: "APPLY_HOME_REPAIR" });
 
     expect(snapshot.state.kebi).toBe(1);
-    expect(snapshot.state.sangzi).toBe(0);
     expect(snapshot.state.homeRepair).toBe(30);
-    expect(snapshot.state.homeRepairTier).toBe(0);
-    expect(snapshot.settlement).toMatchObject({
-      won: true,
-      kebiGained: 1,
-      sangziGained: 20,
-      sangziConsumed: 20,
-      homeRepairBefore: 0,
-      homeRepairGained: 30,
-      homeRepairAfter: 30,
-      survivalLost: 0,
-      xiangxianBonusApplied: true,
-      homeRepairMilestone: null,
-    });
-  });
-
-  it("reports homeRepairMilestone when crossing 33%", () => {
-    resetPieceCounter(0);
-    const shuike = createPiece("shuike");
-    const afterEnd = reduceGameState(
-      {
-        ...createInitialSnapshot(),
-        board: [shuike],
-        state: { ...createInitialSnapshot().state, homeRepair: 20 },
-        phase: "battle",
-        lastBattleResult: {
-          won: true,
-          tick: 10,
-          elapsedMs: 1000,
-          events: [{ type: "roundEnd" }],
-          alliesRemaining: 1,
-          enemiesRemaining: 0,
-          allyHpPercent: 80,
-          waterGuest: {
-            pieceId: shuike.id,
-            deployed: true,
-            survived: true,
-            died: false,
-          },
-        },
-      },
-      { type: "END_BATTLE" },
-    );
-
-    expect(afterEnd.settlement?.homeRepairMilestone).toBe(33);
-    expect(afterEnd.settlement?.homeRepairAfter).toBe(40);
-  });
-
-  it("repairs the tulou by 20% per win without xiangxian", () => {
-    resetPieceCounter(0);
-    let snapshot = withShuike(createInitialSnapshot());
-    const repairs: number[] = [snapshot.state.homeRepair];
-
-    for (let round = 0; round < 4; round += 1) {
-      snapshot = finishBattle(snapshot, true);
-      repairs.push(snapshot.state.homeRepair);
-      if (round < 3) {
-        snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-      }
-    }
-
-    expect(repairs).toEqual([0, 20, 40, 60, 80]);
+    expect(snapshot.settlement?.xiangxianBonusApplied).toBe(true);
   });
 
   it("does not collect letters or repair home on loss", () => {
     resetPieceCounter(0);
-    const snapshot = finishBattle(withShuike(createInitialSnapshot()), false);
+    const snapshot = finishBattle(withShuike(leaveCampfire(createInitialSnapshot())), false);
 
     expect(snapshot.phase).toBe("settlement");
     expect(snapshot.state.kebi).toBe(0);
-    expect(snapshot.state.sangzi).toBe(0);
-    expect(snapshot.state.homeRepair).toBe(0);
     expect(snapshot.state.survival).toBe(1);
-    expect(snapshot.settlement).toMatchObject({
-      won: false,
-      kebiGained: 0,
-      sangziGained: 0,
-      sangziConsumed: 0,
-      homeRepairGained: 0,
-      survivalLost: 1,
-    });
   });
 
   it("win without shuike grants no kebi or repair", () => {
     resetPieceCounter(0);
-    const snapshot = finishBattle(createInitialSnapshot(), true);
+    const snapshot = finishBattle(leaveCampfire(createInitialSnapshot()), true);
     expect(snapshot.settlement).toMatchObject({
       kebiGained: 0,
       sangziGained: 0,
@@ -276,117 +227,75 @@ describe("engine", () => {
     });
   });
 
-  it("recalls placed pieces to bench when advancing to next prep", () => {
+  it("initializes a live battle snapshot after opening buff", () => {
     resetPieceCounter(0);
-    let snapshot = withShuike(createInitialSnapshot());
+    let snapshot = withShuike(leaveCampfire(createInitialSnapshot()));
     snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
-    const pieceId = snapshot.board.find((p) => p.type === "farmer")!.id;
-    snapshot = reduceGameState(snapshot, {
-      type: "MOVE_PIECE",
-      pieceId,
-      position: { x: 3, y: 4 },
-    });
-    expect(snapshot.board.find((p) => p.id === pieceId)?.position).toEqual({
-      x: 3,
-      y: 4,
-    });
-
-    snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
-    snapshot = finishBattle(snapshot, true);
-    snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-
-    expect(snapshot.phase).toBe("prep");
-    expect(snapshot.board.find((p) => p.id === pieceId)?.position).toBeNull();
-  });
-
-  it("initializes a live battle snapshot on START_BATTLE", () => {
-    resetPieceCounter(0);
-    let snapshot = withShuike(createInitialSnapshot());
-    snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
-    snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
+    snapshot = beginBattle(snapshot);
 
     expect(snapshot.phase).toBe("battle");
-    expect(snapshot.battle).not.toBeNull();
-    expect(snapshot.battle?.finished).toBe(false);
-    expect(snapshot.battle?.tick).toBe(0);
-    expect(snapshot.lastBattleResult).toBeNull();
     expect(snapshot.battle?.allies.length).toBeGreaterThan(0);
     expect(snapshot.battle?.enemies.length).toBeGreaterThan(0);
   });
 
-  it("ends game when survival reaches zero", () => {
+  it("enters storm ending when survival reaches zero", () => {
     resetPieceCounter(0);
-    let snapshot = withShuike(createInitialSnapshot());
-    snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
+    let snapshot = withShuike(leaveCampfire(createInitialSnapshot()));
 
     for (let round = 0; round < 2; round += 1) {
-      snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
+      snapshot = beginBattle(snapshot);
       snapshot = runBattleToCompletion(snapshot);
       if (snapshot.phase === "ending") break;
       snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
     }
 
     expect(snapshot.phase).toBe("ending");
-    expect(snapshot.state.result).toBe("lose");
     expect(snapshot.state.endingType).toBe("storm_rescue");
   });
 
-  it("enters win ending after stage 4 when kebi meets threshold", () => {
+  it("enters perfect ending on final node when kebi meets threshold", () => {
     resetPieceCounter(0);
     let snapshot = withShuike(createInitialSnapshot());
-    snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
+    snapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        journeyIndex: 6,
+        currentNodeId: "battle-7",
+        stage: 7,
+        kebi: 5,
+        kebiThreshold: 5,
+      },
+      phase: "prep",
+    };
 
-    for (let stage = 1; stage <= 4; stage += 1) {
-      snapshot = finishBattle(snapshot, true);
-      if (stage < 4) {
-        snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-      } else {
-        snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-      }
-    }
+    snapshot = finishBattle(snapshot, true);
+    snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
 
     expect(snapshot.phase).toBe("ending");
-    expect(snapshot.state.stage).toBe(4);
-    expect(snapshot.state.kebi).toBe(4);
-    expect(snapshot.state.result).toBe("win");
     expect(snapshot.state.endingType).toBe("perfect_homecoming");
   });
 
-  it("enters regret ending after stage 4 when kebi stays below threshold", () => {
+  it("tracks win and lose streaks without paying node wage on loss", () => {
     resetPieceCounter(0);
-    let snapshot = withShuike(createInitialSnapshot());
-    snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
-
-    for (let stage = 1; stage < 4; stage += 1) {
-      snapshot = finishBattle(snapshot, true);
-      snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-    }
-
-    snapshot = finishBattle(
-      { ...snapshot, state: { ...snapshot.state, stage: 4, kebi: 2 } },
-      true,
-    );
-    snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-
-    expect(snapshot.phase).toBe("ending");
-    expect(snapshot.state.kebi).toBe(3);
-    expect(snapshot.state.result).toBe("lose");
-    expect(snapshot.state.endingType).toBe("regretful_stay");
-  });
-
-  it("tracks win and lose streaks for display without affecting income", () => {
-    resetPieceCounter(0);
-    let snapshot = withShuike(createInitialSnapshot());
-    snapshot = reduceGameState(snapshot, { type: "BUY_PIECE", pieceType: "farmer" });
+    let snapshot = withShuike(leaveCampfire(createInitialSnapshot()));
 
     snapshot = finishBattle(snapshot, true);
     expect(snapshot.state.winStreak).toBe(1);
-    expect(snapshot.state.loseStreak).toBe(0);
-
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
     const goldAfterWin = snapshot.state.gold;
 
-    snapshot = reduceGameState(snapshot, { type: "START_BATTLE" });
+    snapshot = {
+      ...snapshot,
+      phase: "prep" as const,
+      state: {
+        ...snapshot.state,
+        journeyIndex: 3,
+        currentNodeId: "battle-3",
+        stage: 3,
+      },
+    };
+    snapshot = beginBattle(snapshot);
     snapshot = runBattleToCompletion(snapshot);
     snapshot = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
 

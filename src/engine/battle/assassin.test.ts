@@ -18,14 +18,15 @@ function place(piece: ReturnType<typeof createPiece>, x: number, y: number) {
 }
 
 describe("stage enemy configuration", () => {
-  it("follows V2.0 count and scaling curve", () => {
+  it("follows V3 seven-level count curve", () => {
     expect(spawnEnemiesForStage(1)).toHaveLength(3);
-    expect(spawnEnemiesForStage(2)).toHaveLength(4);
+    expect(spawnEnemiesForStage(2)).toHaveLength(3);
     expect(spawnEnemiesForStage(3)).toHaveLength(4);
-    expect(spawnEnemiesForStage(4)).toHaveLength(5);
+    expect(spawnEnemiesForStage(4)).toHaveLength(4);
+    expect(spawnEnemiesForStage(7)).toHaveLength(5);
   });
 
-  it("uses tutorial pool on stage 1 and mid pool on stage 3", () => {
+  it("uses designed fixed lineups for early and mid stages", () => {
     const stage1Types = enemyTypesForStage(1);
     expect(stage1Types.every((type) => ["qianhaibei", "luyinguanli"].includes(type))).toBe(
       true,
@@ -34,15 +35,15 @@ describe("stage enemy configuration", () => {
     const stage3Types = enemyTypesForStage(3);
     expect(
       stage3Types.every((type) =>
-        ["zhuzaiqi", "ehushan", "hongtouchuan"].includes(type),
+        ["luyinguanli", "qianhaibei", "zhuzaiqi"].includes(type),
       ),
     ).toBe(true);
   });
 
-  it("always includes xiedouhuo on stage 4", () => {
-    const stage4 = spawnEnemiesForStage(4);
-    expect(stage4.some((enemy) => enemy.type === "xiedouhuo")).toBe(true);
-    expect(enemyTypesForStage(4)[0]).toBe("xiedouhuo");
+  it("always includes xiedouhuo on final stage", () => {
+    const stage7 = spawnEnemiesForStage(7);
+    expect(stage7.some((enemy) => enemy.type === "xiedouhuo")).toBe(true);
+    expect(enemyTypesForStage(7)[0]).toBe("xiedouhuo");
   });
 
   it("defines xiedouhuo as assassin with V2.0 base stats", () => {
@@ -72,12 +73,12 @@ describe("assassin AI", () => {
   it("leaps to the ally back row beside water guest on battle start", () => {
     const shuike = place(createPiece("shuike"), 4, ALLY_ROWS[0]!);
     const guard = place(createPiece("guard"), 2, ALLY_ROWS[1]!);
-    const enemies = spawnEnemiesForStage(4);
+    const enemies = spawnEnemiesForStage(7);
     const assassin = enemies.find((enemy) => enemy.type === "xiedouhuo");
     expect(assassin).toBeDefined();
 
     const battle = createBattleSnapshot({
-      stage: 4,
+      stage: 7,
       allies: [shuike, guard],
       enemies,
     });
@@ -96,7 +97,7 @@ describe("assassin AI", () => {
     const guard = place(createPiece("guard"), 3, ALLY_ROWS[1]!);
     const farmer = place(createPiece("farmer"), 1, ALLY_ROWS[1]!);
 
-    const assassin = spawnEnemiesForStage(4).find((enemy) => enemy.type === "xiedouhuo")!;
+    const assassin = spawnEnemiesForStage(7).find((enemy) => enemy.type === "xiedouhuo")!;
     assassin.atkSpeed = 5;
     assassin.atk = 80;
     farmer.atk = 0;
@@ -105,7 +106,7 @@ describe("assassin AI", () => {
     guard.atkSpeed = 0;
 
     let battle = createBattleSnapshot({
-      stage: 4,
+      stage: 7,
       allies: [shuike, guard, farmer],
       enemies: [assassin],
     });
@@ -115,7 +116,9 @@ describe("assassin AI", () => {
     const assassinAttack = battle.events.find(
       (event) => event.type === "attack" && event.sourceId === assassin.id,
     );
-    expect(assassinAttack?.targetId).toBe(shuike.id);
+    expect(assassinAttack?.type === "attack" ? assassinAttack.targetId : null).toBe(
+      shuike.id,
+    );
   });
 
   it("applyAssassinLeap moves only assassin units", () => {
@@ -143,26 +146,26 @@ describe("assassin AI", () => {
   });
 });
 
-describe("stage 4 balance with tulou buffs", () => {
+describe("final stage balance with tulou buffs", () => {
   it("still pressures water guest at max home repair tier on a thin lineup", () => {
     const shuike = place(createPiece("shuike"), 3, ALLY_ROWS[0]!);
     const farmer = place(createPiece("farmer"), 4, ALLY_ROWS[1]!);
     farmer.atk = 0;
     farmer.atkSpeed = 0;
 
-    const enemies = spawnEnemiesForStage(4).map((enemy) => ({
+    const enemies = spawnEnemiesForStage(7).map((enemy) => ({
       ...enemy,
       atkSpeed: enemy.type === "xiedouhuo" ? 0.9 : enemy.atkSpeed * 0.75,
     }));
 
     const withoutBuffs = simulateBattle({
-      stage: 4,
+      stage: 7,
       allies: [shuike, farmer],
       enemies,
       homeRepairTier: 0,
     });
     const withMaxBuffs = simulateBattle({
-      stage: 4,
+      stage: 7,
       allies: [structuredClone(shuike), structuredClone(farmer)],
       enemies: enemies.map((enemy) => ({ ...enemy })),
       homeRepairTier: 3,

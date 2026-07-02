@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  benchBottomRem,
+  benchBottomRemForPrep,
   benchDockBottomOffset,
   BOTTOM_BENCH_CLEARANCE_REM,
 } from "./bottomLayout";
@@ -16,9 +16,9 @@ describe("bottomLayout", () => {
     expect(benchDockBottomOffset(0, 16, 22)).toBe("22rem");
   });
 
-  it("assumes expanded letter strip in fallback estimate", () => {
-    const collapsed = benchBottomRem(true, false);
-    const expanded = benchBottomRem(true, true);
+  it("estimates more clearance when prep dock is expanded", () => {
+    const collapsed = benchBottomRemForPrep(false);
+    const expanded = benchBottomRemForPrep(true);
     expect(expanded).toBeGreaterThan(collapsed);
   });
 });

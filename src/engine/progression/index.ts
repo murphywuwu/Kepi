@@ -7,6 +7,7 @@ import {
 } from "../constants";
 import { hasXiangxianPresent } from "../waterGuest";
 import { detectHomeRepairMilestone } from "../tulouBuff";
+import { isFinalJourneyNode } from "../journey";
 
 function emptySettlementFields(won: boolean, state: GameSnapshot["state"]) {
   return {
@@ -26,7 +27,7 @@ function emptySettlementFields(won: boolean, state: GameSnapshot["state"]) {
   };
 }
 
-/** Map the three V2.0 endings onto legacy win/lose for AI and storage. */
+/** Map the three endings onto legacy win/lose for AI and storage. */
 export function gameResultFromEndingType(endingType: EndingType): GameResult {
   return endingType === "perfect_homecoming" ? "win" : "lose";
 }
@@ -153,10 +154,11 @@ export function applyHomeRepairFromSettlement(
   };
 }
 
-function enterEnding(
+export function enterEnding(
   snapshot: GameSnapshot,
-  endingType: EndingType,
+  trigger: "elimination" | "final_stage",
 ): GameSnapshot {
+  const endingType = resolveEndingType(snapshot.state, trigger);
   return {
     ...snapshot,
     phase: "ending",
@@ -168,27 +170,15 @@ function enterEnding(
   };
 }
 
-export function resolveProgression(snapshot: GameSnapshot): GameSnapshot {
+/** After battle settlement — check elimination only; journey advance is separate. */
+export function resolveProgressionAfterBattle(
+  snapshot: GameSnapshot,
+): GameSnapshot {
   const { state, lastBattleResult } = snapshot;
   const won = lastBattleResult?.won ?? false;
 
   if (!won && state.survival <= 0) {
-    return enterEnding(snapshot, resolveEndingType(state, "elimination"));
-  }
-
-  if (won && state.stage >= state.totalStages) {
-    return enterEnding(snapshot, resolveEndingType(state, "final_stage"));
-  }
-
-  if (won) {
-    return {
-      ...snapshot,
-      state: {
-        ...state,
-        stage: state.stage + 1,
-        result: state.result ?? "playing",
-      },
-    };
+    return enterEnding(snapshot, "elimination");
   }
 
   return {
@@ -198,6 +188,22 @@ export function resolveProgression(snapshot: GameSnapshot): GameSnapshot {
       result: state.result ?? "playing",
     },
   };
+}
+
+/** @deprecated Use resolveProgressionAfterBattle + advanceJourney. */
+export function resolveProgression(snapshot: GameSnapshot): GameSnapshot {
+  const { state, lastBattleResult } = snapshot;
+  const won = lastBattleResult?.won ?? false;
+
+  if (!won && state.survival <= 0) {
+    return enterEnding(snapshot, "elimination");
+  }
+
+  if (won && isFinalJourneyNode(snapshot)) {
+    return enterEnding(snapshot, "final_stage");
+  }
+
+  return resolveProgressionAfterBattle(snapshot);
 }
 
 export { homeRepairVisualStage as homeRepairStage } from "@/data/balance";

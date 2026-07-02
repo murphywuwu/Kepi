@@ -1,15 +1,18 @@
 import type { TulouVisualStage } from "./types";
 
-/** Balance tables — V2.0 micro-run (4 stages, ~10 min). */
+/** Balance tables — V3.1 journey run (~10–12 min). */
 export const BALANCE = {
-  snapshotVersion: 2,
+  snapshotVersion: 3,
 
   initial: {
     stage: 1,
-    totalStages: 4,
+    totalStages: 7,
+    totalNodes: 7,
+    journeyIndex: 0,
+    currentNodeId: "camp-1",
     survival: 2,
     kebi: 0,
-    kebiThreshold: 4,
+    kebiThreshold: 5,
     sangzi: 0,
     homeRepair: 0,
     homeRepairTier: 0 as const,
@@ -18,9 +21,16 @@ export const BALANCE = {
     winStreak: 0,
     loseStreak: 0,
     pawnedKebi: 0,
+    bloodDebtCount: 0,
     roundPawnCount: 0,
+    roundBloodDebt: false,
+    nextBattleEnemyHpFactor: 1,
     result: null,
     endingType: null,
+  },
+
+  journey: {
+    baseKebiThreshold: 5,
   },
 
   population: {
@@ -29,11 +39,14 @@ export const BALANCE = {
   },
 
   economy: {
-    roundWage: 5,
+    /** Fixed wage when completing a journey node. */
+    nodeWage: 5,
     shopRefreshCost: 1,
     shopSlotCount: 5,
-    /** Gold granted when pawning one letter (kebi) in prep. */
+    /** Gold granted when pawning one letter (kebi). */
     pawnGold: 15,
+    /** Gold granted when borrowing against return threshold. */
+    bloodDebtGold: 35,
   },
 
   battle: {
@@ -67,6 +80,17 @@ export const BALANCE = {
   clanSynergy: {
     thresholds: [2, 3, 4] as const,
     atkBonus: [0.1, 0.2, 0.3] as const,
+    /** 落叶归根 — max tier juice ultimate. */
+    leafFall: {
+      minClanCount: 4,
+      durationMs: 8000,
+      atkSpeedBonus: 0.35,
+      lifestealRatio: 0.15,
+    },
+  },
+
+  openingBuff: {
+    catchWindowMs: 5000,
   },
 
   teacherSkill: {

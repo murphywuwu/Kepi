@@ -49,25 +49,28 @@ export const enemyDefinitionSchema = z.object({
 });
 
 export const stageDefinitionSchema = z.object({
-  stage: z.number().int().min(1).max(4),
+  stage: z.number().int().min(1).max(7),
   name: z.string().min(1),
   enemyCount: z.number().int().min(1).max(6),
   scaling: z.number().positive(),
   enemyPool: z.array(enemyDefinitionSchema.shape.type).min(1),
   prepTimeSec: z.number().int().positive(),
-  difficulty: z.enum(["tutorial", "normal", "hard"]),
+  difficulty: z.enum(["tutorial", "normal", "hard", "extreme"]),
   aiDynamic: z.boolean(),
   boardAsset: z.string().startsWith("/images/"),
 });
 
 export const balanceSchema = z.object({
-  snapshotVersion: z.literal(2),
+  snapshotVersion: z.literal(3),
   initial: z.object({
     stage: z.literal(1),
-    totalStages: z.literal(4),
+    totalStages: z.literal(7),
+    totalNodes: z.literal(7),
+    journeyIndex: z.literal(0),
+    currentNodeId: z.literal("camp-1"),
     survival: z.literal(2),
     kebi: z.literal(0),
-    kebiThreshold: z.literal(4),
+    kebiThreshold: z.literal(5),
     sangzi: z.literal(0),
     homeRepair: z.literal(0),
     homeRepairTier: z.literal(0),
@@ -76,19 +79,26 @@ export const balanceSchema = z.object({
     winStreak: z.literal(0),
     loseStreak: z.literal(0),
     pawnedKebi: z.literal(0),
+    bloodDebtCount: z.literal(0),
     roundPawnCount: z.literal(0),
+    roundBloodDebt: z.literal(false),
+    nextBattleEnemyHpFactor: z.literal(1),
     result: z.null(),
     endingType: z.null(),
+  }),
+  journey: z.object({
+    baseKebiThreshold: z.literal(5),
   }),
   population: z.object({
     max: z.literal(6),
     upgradeCost: z.literal(4),
   }),
   economy: z.object({
-    roundWage: z.literal(5),
+    nodeWage: z.literal(5),
     shopRefreshCost: z.literal(1),
     shopSlotCount: z.literal(5),
     pawnGold: z.literal(15),
+    bloodDebtGold: z.literal(35),
   }),
   battle: z.object({
     tickMs: z.literal(8),
@@ -110,6 +120,19 @@ export const balanceSchema = z.object({
     atkSpeedBonus: z.literal(0.15),
     cheatDeathInvincibleMs: z.literal(1500),
     milestones: z.tuple([z.literal(33), z.literal(66), z.literal(99)]),
+  }),
+  clanSynergy: z.object({
+    thresholds: z.tuple([z.literal(2), z.literal(3), z.literal(4)]),
+    atkBonus: z.tuple([z.literal(0.1), z.literal(0.2), z.literal(0.3)]),
+    leafFall: z.object({
+      minClanCount: z.literal(4),
+      durationMs: z.literal(8000),
+      atkSpeedBonus: z.literal(0.35),
+      lifestealRatio: z.literal(0.15),
+    }),
+  }),
+  openingBuff: z.object({
+    catchWindowMs: z.literal(5000),
   }),
 });
 

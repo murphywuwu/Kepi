@@ -16,7 +16,11 @@ type GameStore = {
   endBattle: () => void;
   applyHomeRepair: () => boolean;
   advanceStage: () => void;
+  advanceJourney: () => void;
   pawnKebi: () => boolean;
+  borrowAgainstReturn: () => boolean;
+  leavePawnShop: () => void;
+  pickCampfireChoice: (choiceId: string) => void;
   resetGame: () => void;
   replaceSnapshot: (snapshot: GameSnapshot) => void;
 };
@@ -100,7 +104,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
+  advanceJourney: () => {
+    const ok = apply(set, get, { type: "ADVANCE_JOURNEY" });
+    if (ok && get().snapshot.phase === "prep") {
+      useUIStore.getState().setDomPieceInspect(null);
+      set({ selectedPieceId: null });
+    }
+  },
+
   pawnKebi: () => apply(set, get, { type: "PAWN_KEBI" }),
+
+  borrowAgainstReturn: () => apply(set, get, { type: "BORROW_AGAINST_RETURN" }),
+
+  leavePawnShop: () => {
+    apply(set, get, { type: "LEAVE_PAWN_SHOP" });
+  },
+
+  pickCampfireChoice: (choiceId) => {
+    apply(set, get, { type: "PICK_CAMPFIRE_CHOICE", choiceId });
+  },
 
   resetGame: () => {
     const next = createInitialSnapshot();

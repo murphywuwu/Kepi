@@ -16,7 +16,9 @@ export function useTurnNarrative(
     if (!input || !cacheKey) return;
 
     let cancelled = false;
-    setLoading(true);
+    const loadingTimer = window.setTimeout(() => {
+      if (!cancelled) setLoading(true);
+    }, 0);
 
     void requestTurnNarrative(input).then((result) => {
       if (cancelled) return;
@@ -27,6 +29,7 @@ export function useTurnNarrative(
 
     return () => {
       cancelled = true;
+      window.clearTimeout(loadingTimer);
     };
   }, [cacheKey, input]);
 

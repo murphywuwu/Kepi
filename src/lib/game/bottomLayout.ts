@@ -15,15 +15,14 @@ export const BENCH_DOCK_LEFT_RATIO = 0.05;
 /** Keep bench clear of the ally grid's left edge. */
 export const BENCH_DOCK_BOARD_GAP_RATIO = 0.02;
 
-export function benchBottomRem(prepShopVisible: boolean, letterExpanded: boolean): number {
-  const letter = BOTTOM_LETTER_STRIP_REM + (letterExpanded ? BOTTOM_LETTER_EXPANDED_EXTRA_REM : 0);
-  const shop = prepShopVisible ? BOTTOM_SHOP_HEIGHT_REM + BOTTOM_STACK_GAP_REM : 0;
+/** Collapsed prep dock handle height (approx). */
+export const BOTTOM_PREP_DOCK_COLLAPSED_REM = 3.25;
+export const BOTTOM_PREP_DOCK_EXPANDED_REM = 11;
+
+export function benchBottomRemForPrep(dockExpanded: boolean): number {
   return (
-    letter +
-    shop +
-    BOTTOM_STACK_GAP_REM +
-    BOTTOM_BENCH_CLEARANCE_REM +
-    BOTTOM_BENCH_FALLBACK_EXTRA_REM
+    (dockExpanded ? BOTTOM_PREP_DOCK_EXPANDED_REM : BOTTOM_PREP_DOCK_COLLAPSED_REM) +
+    BOTTOM_BENCH_CLEARANCE_REM
   );
 }
 

@@ -36,6 +36,7 @@ const sampleNarrativeInput: TurnNarrativeInput = {
   events: {
     didPawn: true,
     pawnCount: 1,
+    didBloodDebt: false,
     waterGuestDied: false,
     waterGuestSurvived: true,
     won: true,
@@ -44,6 +45,8 @@ const sampleNarrativeInput: TurnNarrativeInput = {
   currentKebi: 2,
   currentHomeRepair: 33,
   survival: 2,
+  winStreak: 1,
+  deathCount: 0,
 };
 
 describe("buildAIPromptFromSnapshot", () => {
@@ -69,7 +72,7 @@ describe("buildTurnNarrativeInput", () => {
         kebi: 1,
         roundPawnCount: 1,
       },
-      phase: "settlement",
+      phase: "settlement" as const,
       lastBattleResult: {
         won: true,
         tick: 10,
@@ -92,15 +95,15 @@ describe("buildTurnNarrativeInput", () => {
         allies: [
           {
             id: "farmer-1",
-            type: "farmer",
+            type: "farmer" as const,
             cost: 1,
-            star: 1,
+            star: 1 as const,
             hp: 40,
             maxHp: 450,
             atk: 35,
             atkSpeed: 0.6,
             armor: 5,
-            range: "melee",
+            range: "melee" as const,
             clan: "hakka",
             position: { x: 2, y: 1 },
           },
@@ -112,6 +115,12 @@ describe("buildTurnNarrativeInput", () => {
           deployed: true,
           survived: true,
           died: false,
+        },
+        tulouBuffs: {
+          tier: 0 as const,
+          shieldHp: {},
+          cheatDeathAvailable: [],
+          invincibleUntil: {},
         },
       },
       settlement: {
@@ -127,6 +136,7 @@ describe("buildTurnNarrativeInput", () => {
         waterGuestSurvived: true,
         waterGuestDied: false,
         xiangxianBonusApplied: false,
+        homeRepairMilestone: null,
       },
     };
 

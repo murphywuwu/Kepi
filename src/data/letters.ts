@@ -162,7 +162,7 @@ export function endingSubtitle(
 ): string {
   switch (endingType) {
     case "perfect_homecoming":
-      return `你让 ${ctx.kebi} 个客家人的牵挂回了家。土楼灯火通明，水客踏上了归船。侨批于 2013 年入选《世界记忆名录》。`;
+      return `你没能赢下所有的期冀，但你让 ${ctx.kebi} 个客家人的牵挂回了家。土楼灯火通明，水客踏上了归船。侨批于 2013 年入选《世界记忆名录》。`;
     case "regretful_stay": {
       const tulouNote =
         ctx.homeRepairTier >= 2
@@ -205,7 +205,7 @@ export const ENDING_SUBTITLES = {
   win: (kebi: number) =>
     endingSubtitle("perfect_homecoming", {
       kebi,
-      kebiThreshold: 4,
+      kebiThreshold: 5,
       pawnedKebi: 0,
       homeRepairTier: 2,
       waterGuestSurvived: true,
@@ -215,7 +215,7 @@ export const ENDING_SUBTITLES = {
     kebi > 0
       ? endingSubtitle("storm_rescue", {
           kebi,
-          kebiThreshold: 4,
+          kebiThreshold: 5,
           pawnedKebi: 0,
           homeRepairTier: 0,
           waterGuestSurvived: false,
@@ -223,7 +223,7 @@ export const ENDING_SUBTITLES = {
         })
       : endingSubtitle("storm_rescue", {
           kebi: 0,
-          kebiThreshold: 4,
+          kebiThreshold: 5,
           pawnedKebi: 0,
           homeRepairTier: 0,
           waterGuestSurvived: false,

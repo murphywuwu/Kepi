@@ -1,9 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, type ReactNode } from "react";
 import { ASSET_MANIFEST } from "@/data/assets";
 import { BATTLE_MAX_MS, BATTLE_TICK_MS } from "@/engine/constants";
-import { homeRepairStageLabel } from "@/lib/game/assets";
+import { ENEMY_VISUALS, homeRepairStageLabel } from "@/lib/game/assets";
+import { journeyBattleBrief } from "@/lib/game/journeyBattleHints";
+import {
+  assassinWarningTickLimit,
+  battleHintTickLimit,
+  isFinalBattleNode,
+} from "@/lib/game/journeyBattleUi";
 import { duckBgm, restoreBgm } from "@/lib/audio/bgm";
 import { useGameStore } from "@/store/gameStore";
 import { GameIcon, WoodPanel } from "@/components/game/ui";
@@ -21,7 +28,6 @@ const TU_LOU_BUFF_LABELS: Record<0 | 1 | 2 | 3, string> = {
 export function BattleHud() {
   const phase = useGameStore((state) => state.snapshot.phase);
   const gameState = useGameStore((state) => state.snapshot.state);
-  const stage = gameState.stage;
   const homeRepair = gameState.homeRepair;
   const homeRepairTier = gameState.homeRepairTier;
   const battle = useGameStore((state) => state.snapshot.battle);
@@ -47,10 +53,34 @@ export function BattleHud() {
       : 0;
 
   const kebiReady = gameState.kebi >= gameState.kebiThreshold;
+  const battleBrief = journeyBattleBrief(gameState.currentNodeId);
+  const isFinalBattle = isFinalBattleNode(gameState.currentNodeId);
+  const hintTickLimit = battleHintTickLimit(gameState.currentNodeId);
+  const assassinHintTicks = assassinWarningTickLimit(gameState.currentNodeId);
+  const openingHint =
+    isFinalBattle && battle.tick <= assassinHintTicks
+      ? "火痕落在水客身边，护信！"
+      : battleBrief?.battleHint;
+  const openingIcon =
+    battleBrief ? ENEMY_VISUALS[battleBrief.featuredEnemy].portrait : UI.assassinWarning;
 
   return (
     <BattleHudEffects crisisLevel={crisisLevel}>
-      <div className="pointer-events-none absolute inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex justify-center px-[5%] pr-[calc(5%+3rem)]">
+      {crisisLevel > 0 ? (
+        <div className="pointer-events-none absolute inset-0 z-[16]" aria-hidden>
+          <Image
+            src={UI.textures.waterguestDangerVignette}
+            alt=""
+            fill
+            className={cn(
+              "object-cover mix-blend-multiply",
+              crisisLevel === 2 ? "opacity-85" : "opacity-55",
+            )}
+            sizes="100vw"
+          />
+        </div>
+      ) : null}
+      <div className="pointer-events-none absolute inset-x-0 top-[max(5.25rem,calc(env(safe-area-inset-top)+4.75rem))] z-20 flex justify-center px-[5%]">
         <WoodPanel
           className={cn(
             "pointer-events-auto w-full max-w-3xl transition-[filter,box-shadow]",
@@ -103,9 +133,14 @@ export function BattleHud() {
             </span>
           </div>
 
-          {stage >= 4 && battle.tick <= 1 ? (
+          {openingHint && battle.tick <= (isFinalBattle ? assassinHintTicks : hintTickLimit) ? (
             <p className="mt-1.5 text-[0.625rem] leading-snug text-red-800 sm:text-[0.6875rem]">
-              械斗火已跃至后排——围住水客，别让信沉了。
+              <GameIcon
+                src={openingIcon}
+                size={14}
+                className="mr-1 inline-block rounded-sm"
+              />
+              {openingHint}
             </p>
           ) : null}
         </WoodPanel>
@@ -130,7 +165,7 @@ function WaterGuestStatus({
   if (!deployed) {
     return (
       <span className="inline-flex items-center gap-1 font-semibold text-amber-900">
-        <GameIcon src={ASSET_MANIFEST.characters.shuike} size={14} />
+        <GameIcon src={UI.waterguestSafe} size={14} />
         水客未上场
       </span>
     );
@@ -139,13 +174,19 @@ function WaterGuestStatus({
   if (died || hp <= 0) {
     return (
       <span className="inline-flex items-center gap-1 font-semibold text-red-800">
-        <GameIcon src={ASSET_MANIFEST.characters.shuike} size={14} />
+        <GameIcon src={UI.waterguestLost} size={14} />
         水客已阵亡
       </span>
     );
   }
 
   const pct = maxHp > 0 ? Math.round((hp / maxHp) * 100) : 0;
+  const statusIcon =
+    crisisLevel >= 2
+      ? UI.waterguestLost
+      : crisisLevel === 1
+        ? UI.waterguestDanger
+        : UI.waterguestSafe;
 
   return (
     <span
@@ -156,7 +197,7 @@ function WaterGuestStatus({
         crisisLevel === 0 && "text-kepi-ink",
       )}
     >
-      <GameIcon src={ASSET_MANIFEST.characters.shuike} size={14} />
+      <GameIcon src={statusIcon} size={14} />
       水客 {pct}%
     </span>
   );

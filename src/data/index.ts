@@ -7,6 +7,28 @@ export {
   tulouStageForRepair,
 } from "./balance";
 export {
+  BATTLE_OPENING_BUFFS,
+  OPENING_BUFF_IDS,
+  OPENING_BUFF_TIMEOUT_WEAK,
+} from "./battleBuffs";
+export type { BattleOpeningBuff, BattleOpeningBuffId } from "./battleBuffs";
+export {
+  CAMPFIRE_BACKGROUND_FALLBACK,
+  CAMPFIRE_SCENARIOS,
+  campfireBackgroundForScenario,
+  campfireGlowModeForScenario,
+  campfireScenarioForNode,
+  campfireUsesCinematicFlow,
+  findCampfireChoice,
+} from "./campfire";
+export type {
+  CampfireBackgroundKey,
+  CampfireChoice,
+  CampfireEffect,
+  CampfireGlowMode,
+  CampfireScenario,
+} from "./campfire";
+export {
   ENEMIES,
   ENEMY_TYPES,
   enemyDefinition,
@@ -29,6 +51,12 @@ export {
 } from "./letters";
 export type { EndingNarrativeContext, MuseumLetter } from "./letters";
 export { PIECE_TYPES, PIECES, piecePortrait } from "./pieces";
+export {
+  JOURNEY,
+  TOTAL_JOURNEY_NODES,
+  journeyNodeAt,
+  journeyNodeById,
+} from "./journey";
 export {
   STAGES,
   enemyCount,

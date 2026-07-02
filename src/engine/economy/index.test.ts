@@ -1,32 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { BALANCE } from "@/data";
 import { createInitialSnapshot, reduceGameState } from "@/engine";
-import { applyRoundIncome, pawnKebi } from "./index";
+import { applyNodeWage, borrowAgainstReturn, pawnKebi } from "./index";
 
-describe("economy (V2.0)", () => {
-  it("exposes V2.0 economy constants", () => {
-    expect(BALANCE.economy.roundWage).toBe(5);
+describe("economy (V3.1)", () => {
+  it("exposes V3.1 economy constants", () => {
+    expect(BALANCE.economy.nodeWage).toBe(5);
     expect(BALANCE.economy.shopRefreshCost).toBe(1);
     expect(BALANCE.population.upgradeCost).toBe(4);
     expect(BALANCE.economy.pawnGold).toBe(15);
+    expect(BALANCE.economy.bloodDebtGold).toBe(35);
+    expect(BALANCE.journey.baseKebiThreshold).toBe(5);
   });
 
-  it("pays fixed round wage only on win advance", () => {
+  it("pays fixed node wage on advance", () => {
     let snapshot = createInitialSnapshot();
-    const goldBefore = snapshot.state.gold;
-    snapshot.state.winStreak = 3;
-    snapshot.state.loseStreak = 0;
-    snapshot.state.gold = 47;
+    snapshot = {
+      ...snapshot,
+      state: { ...snapshot.state, gold: 47 },
+    };
 
-    snapshot = applyRoundIncome(snapshot);
+    snapshot = applyNodeWage(snapshot);
 
-    expect(snapshot.state.gold).toBe(47 + BALANCE.economy.roundWage);
+    expect(snapshot.state.gold).toBe(52);
   });
 
   it("allows pawn when prep and kebi >= 1", () => {
     let snapshot = createInitialSnapshot();
     snapshot = {
       ...snapshot,
+      phase: "prep",
       state: { ...snapshot.state, kebi: 2, gold: 3 },
     };
 
@@ -35,15 +38,25 @@ describe("economy (V2.0)", () => {
     expect(next.state.kebi).toBe(1);
     expect(next.state.gold).toBe(18);
     expect(next.state.pawnedKebi).toBe(1);
-    expect(next.state.roundPawnCount).toBe(1);
   });
 
-  it("rejects pawn when kebi is zero", () => {
-    const snapshot = createInitialSnapshot();
-    expect(pawnKebi(snapshot)).toBe(snapshot);
+  it("allows blood debt even at zero kebi and raises threshold", () => {
+    let snapshot = createInitialSnapshot();
+    snapshot = {
+      ...snapshot,
+      phase: "prep",
+      state: { ...snapshot.state, kebi: 0, gold: 0, kebiThreshold: 5 },
+    };
+
+    const next = borrowAgainstReturn(snapshot);
+
+    expect(next.state.gold).toBe(35);
+    expect(next.state.bloodDebtCount).toBe(1);
+    expect(next.state.kebiThreshold).toBe(6);
+    expect(next.state.roundBloodDebt).toBe(true);
   });
 
-  it("rejects pawn outside prep via reducer", () => {
+  it("rejects pawn outside allowed phases via reducer", () => {
     let snapshot = createInitialSnapshot();
     snapshot = {
       ...snapshot,
@@ -54,51 +67,21 @@ describe("economy (V2.0)", () => {
     expect(reduceGameState(snapshot, { type: "PAWN_KEBI" })).toBe(snapshot);
   });
 
-  it("pawn reduces final kebi below threshold and blocks perfect ending", () => {
+  it("blood debt stacks threshold for ending gate", () => {
     let snapshot = createInitialSnapshot();
     snapshot = {
       ...snapshot,
+      phase: "prep",
       state: {
         ...snapshot.state,
-        stage: 4,
-        totalStages: 4,
-        kebi: 4,
-        kebiThreshold: 4,
-        survival: 2,
+        kebi: 6,
+        kebiThreshold: 5,
+        bloodDebtCount: 0,
       },
     };
 
-    snapshot = reduceGameState(snapshot, { type: "PAWN_KEBI" });
-    expect(snapshot.state.kebi).toBe(3);
-
-    snapshot = reduceGameState(snapshot, {
-      type: "LOAD_SNAPSHOT",
-      snapshot: {
-        ...snapshot,
-        phase: "settlement",
-        lastBattleResult: {
-          won: true,
-          tick: 1,
-          elapsedMs: 100,
-          events: [{ type: "roundEnd" }],
-          alliesRemaining: 1,
-          enemiesRemaining: 0,
-          allyHpPercent: 100,
-          enemyHpPercent: 0,
-          waterGuest: {
-            pieceId: "shuike_test",
-            deployed: true,
-            survived: true,
-            died: false,
-          },
-        },
-      },
-    });
-
-    const ending = reduceGameState(snapshot, { type: "ADVANCE_STAGE" });
-    expect(ending.phase).toBe("ending");
-    expect(ending.state.result).toBe("lose");
-    expect(ending.state.endingType).toBe("regretful_stay");
-    expect(ending.state.kebi).toBe(3);
+    snapshot = reduceGameState(snapshot, { type: "BORROW_AGAINST_RETURN" });
+    expect(snapshot.state.kebiThreshold).toBe(6);
+    expect(snapshot.state.kebi).toBe(6);
   });
 });

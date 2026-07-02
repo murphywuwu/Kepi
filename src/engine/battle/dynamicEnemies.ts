@@ -1,5 +1,6 @@
 import { stageDefinition } from "@/data";
 import { ENEMY_TYPES } from "@/data/enemies";
+import { levelInteractionForStage } from "@/data/levelInteractions";
 import type { EnemyType, Piece, PieceType } from "@/types";
 import { enemyCountForStage } from "../constants";
 
@@ -11,7 +12,12 @@ const RANGED_TYPES: ReadonlySet<PieceType> = new Set([
 
 /** Stage 4 lineup adapts to player board — always includes xiedouhuo. */
 export function enemyTypesForBattle(stage: number, allies: Piece[]): EnemyType[] {
-  if (stage < 4) {
+  const interaction = levelInteractionForStage(stage);
+  if (interaction) {
+    return [...interaction.enemyComposition];
+  }
+
+  if (stage < 7) {
     return enemyTypesForFixedStage(stage);
   }
 

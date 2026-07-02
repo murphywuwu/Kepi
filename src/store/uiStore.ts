@@ -1,5 +1,9 @@
 import { create } from "zustand";
 
+import { shouldShowStageBrief } from "@/lib/game/prepUi";
+import type { PrepGuideStep } from "@/lib/game/prepGuide";
+import { PREP_GUIDE_NODE_ID } from "@/lib/game/prepGuide";
+import type { PrepSubview } from "@/lib/game/prepUi";
 import type { UnitInspectInfo } from "@/lib/game/unitInspect";
 
 export type DomPieceInspect = {
@@ -34,8 +38,21 @@ export type HoveredUnit = {
 type UIStore = {
   debugOpen: boolean;
   setDebugOpen: (open: boolean) => void;
+  /** @deprecated Use supportPopoverOpen — kept for bench layout fallback. */
   letterStripExpanded: boolean;
   setLetterStripExpanded: (open: boolean) => void;
+  supportPopoverOpen: boolean;
+  setSupportPopoverOpen: (open: boolean) => void;
+  prepSubview: PrepSubview;
+  seenStageBriefNodeIds: string[];
+  prepGuideStep: PrepGuideStep;
+  enterPrepNode: (nodeId: string) => void;
+  dismissStageBrief: (nodeId: string) => void;
+  skipPrepGuide: () => void;
+  markPrepGuideDone: () => void;
+  setPrepGuideStep: (step: PrepGuideStep) => void;
+  prepDockExpanded: boolean;
+  setPrepDockExpanded: (expanded: boolean) => void;
   bottomDockHeightPx: number;
   setBottomDockHeightPx: (height: number) => void;
   domPieceInspect: DomPieceInspect | null;
@@ -68,6 +85,50 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   letterStripExpanded: false,
   setLetterStripExpanded: (letterStripExpanded) => set({ letterStripExpanded }),
+
+  supportPopoverOpen: false,
+  setSupportPopoverOpen: (supportPopoverOpen) => set({ supportPopoverOpen }),
+
+  prepSubview: "active",
+  seenStageBriefNodeIds: [],
+  prepGuideStep: 1,
+
+  enterPrepNode: (nodeId) => {
+    const seen = new Set(get().seenStageBriefNodeIds);
+    if (shouldShowStageBrief(nodeId, seen)) {
+      set({ prepSubview: "stage_brief", supportPopoverOpen: false });
+      return;
+    }
+    const guideStep = get().prepGuideStep;
+    set({
+      prepSubview: "active",
+      prepGuideStep:
+        nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done" ? 1 : guideStep,
+      prepDockExpanded: nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done",
+    });
+  },
+
+  dismissStageBrief: (nodeId) => {
+    const seen = get().seenStageBriefNodeIds;
+    const nextSeen = seen.includes(nodeId) ? seen : [...seen, nodeId];
+    const guideStep = get().prepGuideStep;
+    set({
+      prepSubview: "active",
+      seenStageBriefNodeIds: nextSeen,
+      prepGuideStep:
+        nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done" ? 1 : guideStep,
+      prepDockExpanded: nodeId === PREP_GUIDE_NODE_ID && guideStep !== "done",
+    });
+  },
+
+  skipPrepGuide: () => set({ prepGuideStep: "done" }),
+
+  markPrepGuideDone: () => set({ prepGuideStep: "done" }),
+
+  setPrepGuideStep: (prepGuideStep) => set({ prepGuideStep }),
+
+  prepDockExpanded: false,
+  setPrepDockExpanded: (prepDockExpanded) => set({ prepDockExpanded }),
 
   bottomDockHeightPx: 0,
   setBottomDockHeightPx: (bottomDockHeightPx) => set({ bottomDockHeightPx }),

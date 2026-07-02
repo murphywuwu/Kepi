@@ -12,11 +12,19 @@ export const BOARD_ROWS = 5;
  */
 export const BOARD_ANCHOR = {
   centerXRatio: 0.5,
-  /** Lift ally rows so front line clears the prep bench + letter dock. */
+  /** Default — battle / settlement with minimal bottom chrome. */
   allyBottomRatio: 0.52,
+  /** Prep with collapsed bottom dock — board uses more vertical space. */
+  prepAllyBottomCollapsed: 0.58,
+  /** Prep with expanded shop dock — lift ally rows above the dock. */
+  prepAllyBottomExpanded: 0.49,
   boardWidthRatio: 0.44,
   boardHeightRatio: 0.34,
 } as const;
+
+export type BoardMetricsOptions = {
+  allyBottomRatio?: number;
+};
 
 export type BoardMetrics = {
   width: number;
@@ -30,7 +38,9 @@ export type BoardMetrics = {
 export function computeBoardMetrics(
   width: number,
   height: number,
+  options?: BoardMetricsOptions,
 ): BoardMetrics {
+  const allyBottomRatio = options?.allyBottomRatio ?? BOARD_ANCHOR.allyBottomRatio;
   const cellSize = Math.min(
     (width * BOARD_ANCHOR.boardWidthRatio) / BOARD_COLS,
     (height * BOARD_ANCHOR.boardHeightRatio) / BOARD_ROWS,
@@ -38,7 +48,7 @@ export function computeBoardMetrics(
 
   const boardCenterX = width * BOARD_ANCHOR.centerXRatio;
   const allyFrontRow = ALLY_ROWS[ALLY_ROWS.length - 1]!;
-  const allyFrontCenterY = height * BOARD_ANCHOR.allyBottomRatio;
+  const allyFrontCenterY = height * allyBottomRatio;
 
   return {
     width,
@@ -48,6 +58,12 @@ export function computeBoardMetrics(
     cellSize,
     padding: Math.min(width, height) * 0.06,
   };
+}
+
+export function allyBottomRatioForPrep(prepDockExpanded: boolean): number {
+  return prepDockExpanded
+    ? BOARD_ANCHOR.prepAllyBottomExpanded
+    : BOARD_ANCHOR.prepAllyBottomCollapsed;
 }
 
 export function boardToPixel(

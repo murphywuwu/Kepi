@@ -1,0 +1,33 @@
+import { ASSET_MANIFEST } from "@/data/assets";
+import type { JourneyNodeType } from "@/types/journey";
+
+const UI = ASSET_MANIFEST.ui;
+const BOARD = ASSET_MANIFEST.board;
+
+export function journeyNodeIcon(type: JourneyNodeType): string {
+  switch (type) {
+    case "battle":
+      return UI.journeyNodeBattle;
+    case "pawn_shop":
+      return UI.journeyNodePawn;
+    case "campfire":
+      return UI.journeyNodeCampfire;
+  }
+}
+
+/** Exterior tulou silhouette for the journey repair strip (33 / 66 / 99 tiers). */
+export function tulouExteriorForRepair(homeRepair: number): string {
+  if (homeRepair >= 99) return BOARD.tulouExteriorGlow;
+  if (homeRepair >= 66) return BOARD.tulouExteriorRenew;
+  if (homeRepair >= 33) return BOARD.tulouExteriorRepair;
+  return BOARD.tulouExteriorRuined;
+}
+
+export function isNarrativePhase(phase: string): boolean {
+  return phase === "campfire" || phase === "pawn_shop";
+}
+
+/** Compact top bar during live combat and the 乡音符 grab window. */
+export function isJourneyScrollCompact(phase: string): boolean {
+  return phase === "battle" || phase === "opening_buff";
+}

@@ -23,8 +23,11 @@ export const STAR_HP_ATK_MULTIPLIER = BALANCE.progression.starHpAtkMultiplier;
 export const SHOP_SLOT_COUNT = BALANCE.economy.shopSlotCount;
 export const SHOP_REFRESH_COST = BALANCE.economy.shopRefreshCost;
 
-export const ROUND_WAGE = BALANCE.economy.roundWage;
+export const ROUND_WAGE = BALANCE.economy.nodeWage;
+export const NODE_WAGE = BALANCE.economy.nodeWage;
 export const PAWN_KEBI_GOLD = BALANCE.economy.pawnGold;
+export const BLOOD_DEBT_GOLD = BALANCE.economy.bloodDebtGold;
+export const BASE_KEBI_THRESHOLD = BALANCE.journey.baseKebiThreshold;
 
 export const SANGZI_PER_WIN = BALANCE.progression.sangziPerWin;
 export const HOME_REPAIR_PER_WIN = BALANCE.progression.homeRepairPerWin;

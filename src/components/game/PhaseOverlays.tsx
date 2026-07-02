@@ -1,7 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ASSET_MANIFEST } from "@/data/assets";
+import { levelInteractionForNode } from "@/data/levelInteractions";
+import { settlementBackdropSrc } from "@/lib/game/battleBuffUi";
+import { isFinalBattleNode } from "@/lib/game/journeyBattleUi";
 import { useBattleTicker } from "@/components/game/useBattleTicker";
 import { homeRepairStageLabel } from "@/lib/game/assets";
 import {
@@ -187,7 +191,13 @@ function WonSettlementOverlay({
   );
 }
 
-function settlementHeadline(won: boolean, settlement?: SettlementSummary | null): string {
+function settlementHeadline(
+  won: boolean,
+  nodeId: string,
+  settlement?: SettlementSummary | null,
+): string {
+  const interaction = levelInteractionForNode(nodeId);
+  if (interaction) return interaction.settlement.actName;
   if (!won) return "本关失利";
   if (settlement?.kebiGained && settlement.kebiGained > 0) return "本关胜利";
   if (settlement?.waterGuestDied) return "胜利，但信丢了";
@@ -197,20 +207,68 @@ function settlementHeadline(won: boolean, settlement?: SettlementSummary | null)
 function settlementSubtitle(
   won: boolean,
   survival: number,
+  nodeId: string,
   settlement?: SettlementSummary | null,
 ): string {
+  const interaction = levelInteractionForNode(nodeId);
   if (!won) {
-    return survival > 0
+    return interaction
+      ? interaction.settlement.loss
+      : survival > 0
       ? "客批未能送达，存续度 -1，调整阵容后再战"
       : "存续度归零";
   }
   if (settlement?.kebiGained && settlement.kebiGained > 0) {
-    return "一封信回家，桑梓随信而归";
+    return interaction?.settlement.win ?? "一封信回家，桑梓随信而归";
   }
   if (settlement?.waterGuestDied) {
-    return "寨子守住了，可信沉在了风里。水客没能把信带回来。";
+    return interaction?.settlement.winNoLetter ??
+      "寨子守住了，可信沉在了风里。水客没能把信带回来。";
   }
-  return "胜局成立，但水客未上场或未能护信，本回合无客批与桑梓。";
+  return interaction?.settlement.winNoLetter ??
+    "胜局成立，但水客未上场或未能护信，本回合无客批与桑梓。";
+}
+
+function FinalSettlementGateBanner({
+  state,
+  won,
+}: {
+  state: GameState;
+  won: boolean;
+}) {
+  const kebiReady = state.kebi >= state.kebiThreshold;
+
+  return (
+    <div
+      className={cn(
+        "mt-3 flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-xs leading-relaxed",
+        won && kebiReady
+          ? "border-emerald-800/35 bg-emerald-950/18 text-emerald-50/95"
+          : "border-amber-800/35 bg-amber-950/18 text-amber-50/95",
+      )}
+      role="status"
+    >
+      <GameIcon
+        src={ASSET_MANIFEST.ending.homewardTicketProp}
+        size={28}
+        className="mt-0.5 shrink-0"
+      />
+      <div>
+        <p className="font-bold">
+          {won ? "风浪已过 — 归乡票根" : "终局失利 — 归乡暂缓"}
+        </p>
+        <p className="mt-0.5 text-[0.6875rem] opacity-92">
+          {won
+            ? kebiReady
+              ? `客批 ${state.kebi}/${state.kebiThreshold} 已达标。点击下方「查看结局」，查验完美归乡或遗憾结局。`
+              : `客批 ${state.kebi}/${state.kebiThreshold} 未达阈值。仍可查看结局，但恐难完美归乡。`
+            : state.survival > 0
+              ? "存续仍在，可重整阵容再战终局。"
+              : "存续归零，将直接进入结局演出。"}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function SettlementSummaryCard({
@@ -232,21 +290,48 @@ function SettlementSummaryCard({
   narrativeKey: string;
   narrativeInput: import("@/lib/ai/types").TurnNarrativeInput | null;
 }) {
+  const backdrop = settlementBackdropSrc(won, settlement);
+  const interaction = levelInteractionForNode(state.currentNodeId);
+  const nextLabel =
+    state.survival <= 0 || state.journeyIndex >= state.totalNodes - 1
+      ? "查看结局"
+      : won
+        ? (interaction?.settlement.cta ?? "进入下一关")
+        : "重整再战";
+
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4">
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4 pt-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+      {backdrop ? (
+        <>
+          <Image
+            src={backdrop}
+            alt=""
+            fill
+            className="pointer-events-none object-cover opacity-35"
+            sizes="100vw"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-black/50" aria-hidden />
+        </>
+      ) : (
+        <div className="pointer-events-none absolute inset-0 bg-black/35" aria-hidden />
+      )}
       <WoodPanel
-        className="pointer-events-auto w-full max-w-md"
+        className="pointer-events-auto relative w-full max-w-md"
         letterEdge
         innerClassName="p-5"
       >
         <h2 className="text-center text-lg font-bold text-kepi-ink">
-          {settlementHeadline(won, settlement)}
+          {settlementHeadline(won, state.currentNodeId, settlement)}
         </h2>
         <p className="mt-1 text-center text-xs text-kepi-ink-muted">
-          {settlementSubtitle(won, state.survival, settlement)}
+          {settlementSubtitle(won, state.survival, state.currentNodeId, settlement)}
         </p>
 
         {settlement ? <SettlementOutcomeRow settlement={settlement} state={state} /> : null}
+
+        {isFinalBattleNode(state.currentNodeId) ? (
+          <FinalSettlementGateBanner state={state} won={won} />
+        ) : null}
 
         <div className="kepi-wood-divider my-4" />
 
@@ -257,6 +342,13 @@ function SettlementSummaryCard({
         ) : (
           <LossSummary survival={state.survival} />
         )}
+
+        {interaction ? (
+          <div className="mt-3 rounded-md border border-amber-900/20 bg-amber-950/10 p-3 text-xs leading-relaxed text-kepi-ink-muted">
+            <p className="font-semibold text-kepi-ink">{interaction.settlement.nextHook}</p>
+            <p className="mt-1">{interaction.acceptance}</p>
+          </div>
+        ) : null}
 
         <div className="kepi-wood-divider my-4" />
 
@@ -288,13 +380,8 @@ function SettlementSummaryCard({
           className="mt-5 w-full py-2.5 text-sm font-bold"
           onClick={() => advanceStage()}
         >
-          {state.survival <= 0
-            ? "查看结局"
-            : won
-              ? state.stage >= state.totalStages
-                ? "查看结局"
-                : "进入下一关"
-              : "重整再战"}
+          <GameIcon src={UI.settlementConfirm} size={18} />
+          {nextLabel}
         </WoodButton>
       </WoodPanel>
     </div>
@@ -375,7 +462,7 @@ function VictoryCinematic({
   }, [shotIndex, repairShotIndex, onRepairShot]);
 
   useEffect(() => {
-    setShotIndex(0);
+    const resetTimer = window.setTimeout(() => setShotIndex(0), 0);
     const warm = window.setTimeout(() => {
       for (const shot of shots) {
         const preload = new window.Image();
@@ -393,6 +480,7 @@ function VictoryCinematic({
     }, totalDuration);
 
     return () => {
+      window.clearTimeout(resetTimer);
       window.clearTimeout(warm);
       timers.forEach((timer) => window.clearTimeout(timer));
       window.clearTimeout(completeTimer);

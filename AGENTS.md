@@ -8,12 +8,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
  ## 项目简介
  
  「客批」是一款 **AI 驱动的客家文化自走棋**（auto-chess），面向浏览器运行。
- 玩家在一局 6 关的自走棋中招募客家角色、布阵、自动战斗，沿途攒下"客批"（侨批/家书），最终在结局亲手接住一封真实侨批，听客家话朗读——用游戏体验百年客家侨民的乡愁与反哺。
+ 玩家在一局约 10–12 分钟的归乡路线中招募客家角色、布阵、自动战斗，沿途攒下"客批"（侨批/家书），经历典当行与篝火夜话，最终在结局亲手接住一封真实侨批，听客家话朗读——用游戏体验百年客家侨民的乡愁与反哺。
  
  - **产品名称**：客批（Kepi）
  - **定位**：单人、短局、轻策略、强叙事自走棋
  - **赛道**：腾讯云黑客松（AI CAN DO IT · 游戏极限开发挑战赛），融合"公益 + 文化"双赛道
- - **PRD 当前版本**：V1.6
+ - **PRD 当前版本**：V3.1（微肉鸽线性卷轴 + 情感自走棋）
  
  ## 技术栈
  
@@ -44,8 +44,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
      battle/     #   战斗模拟（tick 制，伤害公式：atk×100/(100+armor)）
      economy/    #   金币、利息、工资、连赢/连输奖励
      shop/       #   刷新、购买、卖出、人口扩容
-     progression/#   胜负结算、关卡推进、结局判定
-     stateMachine/#  阶段切换（prep → battle → settlement → ending）
+     progression/#   胜负结算、路线推进、结局判定
+     journey/      #   V3.1 固定归乡节点（battle / pawn_shop / campfire）
+     stateMachine/#  阶段切换（campfire / prep / opening_buff / battle / settlement / ending）
    store/        # Zustand 镜像层（不写规则，只做 UI 镜像 + action 分发）
    data/         # 静态配置（棋子、敌人、关卡、平衡表、书信）
    lib/          # 工具库（schema、存档、AI 封装、游戏辅助函数）
@@ -101,15 +102,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
  - **水客（shuike）**：纯运信收信，每胜客批 +1，信里自带桑梓值随信收回。
  - **乡贤（xiangxian）**：消耗桑梓值修家园，驱动土楼三阶段视觉变化。
  
- ### 双线与胜负判定
- - **客批（kebi）**：每赢一关 +1，纯胜场计数器，阈值 5。终关客批 ≥ 5 且完成 6 关 = 赢。
- - **生存度（survival）**：初始 2 条命，输一场扣 1，归零即出局（输）。
- - **家园修复（homeRepair）**：桑梓值驱动，土楼视觉 3 阶段（破败→修缮→翻新），只升不降，不参与输赢判定。
- 
- ### 阶段流转
- ```
- prep（备战）→ battle（战斗）→ settlement（结算）→ prep → ... → ending（结局）
- ```
+### 双线与胜负判定
+- **客批（kebi）**：每赢一关 +1，纯胜场计数器，阈值 **5 + bloodDebtCount**。终关客批 ≥ 阈值且完成路线 = 赢。
+- **生存度（survival）**：初始 2 条命，输一场扣 1，归零即出局（输）。
+- **家园修复（homeRepair）**：桑梓值驱动，土楼视觉 3 阶段（破败→修缮→翻新），只升不降，不参与输赢判定。
+
+### 阶段流转（V3.1）
+```
+campfire / pawn_shop（路线节点）
+  → prep → opening_buff → battle → settlement → 下一节点 → … → ending
+```
  - prep：30 秒自动开战超时
  - battle：全自动 tick 制，最多 40 秒
  - settlement：确认后推进下一关
@@ -206,11 +208,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
  
  ## 相关文档
  
- - [PRD V1.6](docs/kepi_PRD_V1.6.md) — 产品需求文档，包含完整设计、数值、叙事
+ - [PRD V3.1](docs/kepi_PRD_V3.1.md) — 当前产品需求（卷轴路线、双向典当、乡音符、AI 熔断）
+- [PRD V1.6](docs/kepi_PRD_V1.6.md) — 历史 PRD
  - [架构与技术栈](docs/kepi_architecture-and-tech-stack_v1.md)
  - [目录职责与核心接口](docs/kepi_directory-responsibilities-and-core-interfaces_v1.md)
  - [数据结构清单](docs/kepi_data-structures_v1.md)
  - [美术风格设定](docs/kepi_art-style-design_v1.md)
  - [素材与媒体计划](docs/kepi_assets-and-media-plan_v1.md)
- - [TODO 文档](docs/kepi_todo_v1.md) — 开发阶段与进度
+ - [TODO 文档](docs/kepi_todo_v3.md) — V3.1 开发清单
  - [文档模板与命名规范](docs/kepi_document-conventions_v1.md)
