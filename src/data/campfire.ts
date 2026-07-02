@@ -100,6 +100,10 @@ export const CAMPFIRE_SCENARIOS: readonly CampfireScenario[] = [
     id: "camp-old-route",
     backgroundKey: "campfireOldRoute",
     glow: "subtle",
+    openingActLabel: "第一幕 · 背景",
+    choiceActLabel: "第二幕 · 抉择",
+    choiceHint: "路在脚下，想好再选。",
+    textOnlyChoices: true,
     opening: [
       "夜里风紧，老水客压低嗓子。",
       "他讲了一条险路，能抄近，也能稳着走。",

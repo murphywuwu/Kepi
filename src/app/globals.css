@@ -2103,6 +2103,38 @@
     color: rgba(255, 248, 235, 0.68);
   }
 
+  .kepi-campfire-ration-card__effect {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: auto;
+    padding-top: 0.65rem;
+    width: 100%;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    color: rgba(251, 191, 36, 0.88);
+  }
+
+  .kepi-campfire-ration-card__effect-icon {
+    flex: 0 0 auto;
+    align-self: center;
+  }
+
+  .kepi-campfire-ration-card__effect-label {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .kepi-campfire-ration-card--right .kepi-campfire-ration-card__effect {
+    color: rgba(167, 210, 176, 0.9);
+  }
+
   .kepi-campfire-ration-card__mark {
     position: absolute;
     right: 0.65rem;

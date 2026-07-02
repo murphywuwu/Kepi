@@ -30,15 +30,21 @@ describe("campfire data", () => {
     );
   });
 
-  it("maps camp-2 to old-route scenario", () => {
+  it("maps camp-2 to old-route scenario with two-act text-only flow", () => {
     const scenario = campfireScenarioForNode("camp-2");
     expect(scenario.id).toBe("camp-old-route");
     expect(scenario.backgroundKey).toBe("campfireOldRoute");
+    expect(scenario.textOnlyChoices).toBe(true);
+    expect(scenario.openingActLabel).toBe("第一幕 · 背景");
+    expect(scenario.choiceActLabel).toBe("第二幕 · 抉择");
+    expect(scenario.choiceHint).toBe("路在脚下，想好再选。");
     expect(campfireGlowModeForScenario(scenario)).toBe("subtle");
     expect(scenario.choices.map((choice) => choice.id)).toEqual([
       "route-gold",
       "route-caution",
     ]);
+    expect(scenario.choices[0]?.effect.label).toBe("获得 12 金币");
+    expect(scenario.choices[1]?.effect.label).toBe("下战敌人生命 -10%");
   });
 
   it("applies next battle debuff on route-caution", () => {

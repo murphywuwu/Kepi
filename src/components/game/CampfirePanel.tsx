@@ -287,10 +287,14 @@ function CampfireOpening({
   );
 }
 
-const RATION_CHOICE_EYEBROWS = {
+const SPLIT_CHOICE_EYEBROWS: Record<string, string> = {
   "share-gold": "留给同行",
   "share-repair": "寄回故乡",
-} as const;
+  "route-gold": "抄近攒盘缠",
+  "route-caution": "稳着走",
+};
+
+const SPLIT_CHOICE_SCENARIOS = new Set(["camp-share-rations", "camp-old-route"]);
 
 function CampfireChoiceBeat({
   nodeLabel,
@@ -315,20 +319,21 @@ function CampfireChoiceBeat({
   onSelect: (choice: CampfireChoice) => void;
   onConfirm: () => void;
 }) {
-  const splitRations = scenarioId === "camp-share-rations";
+  const splitChoices = SPLIT_CHOICE_SCENARIOS.has(scenarioId);
+  const showEffectLabels = scenarioId === "camp-old-route";
   const hintCopy = choiceHint ?? "此夜抉择将影响接下来的路。";
 
   return (
     <div
       className={cn(
         "kepi-campfire-beat kepi-campfire-beat--choice pointer-events-auto w-full max-w-xl",
-        textOnly && splitRations && "kepi-campfire-beat--choice-ration",
+        textOnly && splitChoices && "kepi-campfire-beat--choice-ration",
       )}
     >
       <div
         className={cn(
           "kepi-campfire-narrative kepi-campfire-narrative--choice px-5 pt-6 pb-4 sm:px-7 sm:pt-8 sm:pb-5",
-          textOnly && splitRations && "kepi-campfire-narrative--choice-ration",
+          textOnly && splitChoices && "kepi-campfire-narrative--choice-ration",
         )}
       >
         <div className="kepi-campfire-choice-header">
@@ -339,24 +344,25 @@ function CampfireChoiceBeat({
           <p
             className={cn(
               "text-sm leading-relaxed text-amber-50/88 sm:text-base",
-              textOnly && splitRations ? "mt-3" : "mt-4",
+              textOnly && splitChoices ? "mt-3" : "mt-4",
             )}
           >
             {prompt}
           </p>
         </div>
 
-        {textOnly && splitRations ? (
-          <CampfireRationChoices
+        {textOnly && splitChoices ? (
+          <CampfireSplitChoices
             choices={choices}
             selectedId={selectedId}
+            showEffectLabels={showEffectLabels}
             onSelect={onSelect}
           />
         ) : (
           <div
             className={cn(
               "kepi-campfire-choice-list mt-5",
-              splitRations && "kepi-campfire-choice-list--split",
+              splitChoices && "kepi-campfire-choice-list--split",
             )}
             role="group"
             aria-label="夜话抉择"
@@ -368,8 +374,8 @@ function CampfireChoiceBeat({
                 className={cn(
                   "kepi-campfire-choice-option text-left",
                   selectedId === choice.id && "kepi-campfire-choice-option--selected",
-                  splitRations && `kepi-campfire-choice-option--half-${index}`,
-                  !splitRations && `kepi-campfire-choice-option--stack-${index}`,
+                  splitChoices && `kepi-campfire-choice-option--half-${index}`,
+                  !splitChoices && `kepi-campfire-choice-option--stack-${index}`,
                 )}
                 onClick={() => onSelect(choice)}
                 aria-pressed={selectedId === choice.id}
@@ -431,13 +437,15 @@ function CampfireChoiceBeat({
   );
 }
 
-function CampfireRationChoices({
+function CampfireSplitChoices({
   choices,
   selectedId,
+  showEffectLabels,
   onSelect,
 }: {
   choices: [CampfireChoice, CampfireChoice];
   selectedId: string | null;
+  showEffectLabels?: boolean;
   onSelect: (choice: CampfireChoice) => void;
 }) {
   const sides = [
@@ -452,9 +460,7 @@ function CampfireRationChoices({
       </div>
 
       {sides.map(({ side, choice }) => {
-        const eyebrow =
-          RATION_CHOICE_EYEBROWS[choice.id as keyof typeof RATION_CHOICE_EYEBROWS] ??
-          "夜话";
+        const eyebrow = SPLIT_CHOICE_EYEBROWS[choice.id] ?? "夜话";
 
         return (
           <button
@@ -472,6 +478,18 @@ function CampfireRationChoices({
             <span className="kepi-campfire-ration-card__eyebrow">{eyebrow}</span>
             <p className="kepi-campfire-ration-card__title">{choice.title}</p>
             <p className="kepi-campfire-ration-card__desc">{choice.description}</p>
+            {showEffectLabels ? (
+              <span className="kepi-campfire-ration-card__effect">
+                <GameIcon
+                  src={effectIcon(choice.effect.kind)}
+                  size={16}
+                  className="kepi-campfire-ration-card__effect-icon"
+                />
+                <span className="kepi-campfire-ration-card__effect-label">
+                  {choice.effect.label}
+                </span>
+              </span>
+            ) : null}
             <span className="kepi-campfire-ration-card__mark" aria-hidden />
           </button>
         );
