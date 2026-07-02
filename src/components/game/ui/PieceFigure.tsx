@@ -46,15 +46,6 @@ export function PieceFigure({
         )}
         aria-hidden
       />
-      {selected ? (
-        <div
-          className={cn(
-            "kepi-piece-figure-select-ring",
-            isBench && "kepi-piece-figure-select-ring-bench",
-          )}
-          aria-hidden
-        />
-      ) : null}
       {/* Native img — same URL as canvas; avoids stale /_next/image optimizer cache */}
       <img
         src={visual.portrait}

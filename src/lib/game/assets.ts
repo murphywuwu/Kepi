@@ -17,6 +17,11 @@ export type UnitVisualMeta = {
   color: string;
   portrait: string;
   placeholder: string;
+  visibleBounds?: {
+    left: number;
+    right: number;
+    bottom: number;
+  };
 };
 
 export const TULOU_BOARD_ASSETS = {
@@ -94,6 +99,7 @@ export const ENEMY_VISUALS: Record<EnemyType, UnitVisualMeta> = {
     color: "#7b4b4b",
     portrait: ASSET_MANIFEST.enemies.qianhaibei,
     placeholder: "/images/enemies/qianhaibei.svg",
+    visibleBounds: { left: 99 / 1024, right: 642 / 1024, bottom: 1152 / 1280 },
   },
   luyinguanli: {
     label: "陆营官吏",
@@ -101,6 +107,7 @@ export const ENEMY_VISUALS: Record<EnemyType, UnitVisualMeta> = {
     color: "#6b3a3a",
     portrait: ASSET_MANIFEST.enemies.luyinguanli,
     placeholder: "/images/enemies/luyinguanli.svg",
+    visibleBounds: { left: 101 / 1024, right: 834 / 1024, bottom: 1226 / 1280 },
   },
   zhuzaiqi: {
     label: "猪仔契",
@@ -108,6 +115,7 @@ export const ENEMY_VISUALS: Record<EnemyType, UnitVisualMeta> = {
     color: "#8c4a4a",
     portrait: ASSET_MANIFEST.enemies.zhuzaiqi,
     placeholder: "/images/enemies/zhuzaiqi.svg",
+    visibleBounds: { left: 168 / 1024, right: 856 / 1024, bottom: 1255 / 1280 },
   },
   ehushan: {
     label: "鹅湖山",
@@ -115,6 +123,7 @@ export const ENEMY_VISUALS: Record<EnemyType, UnitVisualMeta> = {
     color: "#5c4033",
     portrait: ASSET_MANIFEST.enemies.ehushan,
     placeholder: "/images/enemies/ehushan.svg",
+    visibleBounds: { left: 99 / 1024, right: 924 / 1024, bottom: 1048 / 1280 },
   },
   hongtouchuan: {
     label: "红头船",
@@ -122,6 +131,7 @@ export const ENEMY_VISUALS: Record<EnemyType, UnitVisualMeta> = {
     color: "#9b2c2c",
     portrait: ASSET_MANIFEST.enemies.hongtouchuan,
     placeholder: "/images/enemies/hongtouchuan.svg",
+    visibleBounds: { left: 99 / 1024, right: 925 / 1024, bottom: 1026 / 1280 },
   },
   xiedouhuo: {
     label: "械斗火",
@@ -129,6 +139,7 @@ export const ENEMY_VISUALS: Record<EnemyType, UnitVisualMeta> = {
     color: "#b45309",
     portrait: ASSET_MANIFEST.enemies.xiedouhuo,
     placeholder: "/images/enemies/xiedouhuo.svg",
+    visibleBounds: { left: 99 / 1024, right: 925 / 1024, bottom: 1129 / 1280 },
   },
 };
 

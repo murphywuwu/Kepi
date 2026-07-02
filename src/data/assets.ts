@@ -31,6 +31,7 @@ export const ASSET_MANIFEST = {
     tulouExteriorRepair: "/images/board/kepi_tulou-exterior-repair.png",
     tulouExteriorRenew: "/images/board/kepi_tulou-exterior-renew.png",
     tulouExteriorGlow: "/images/board/kepi_tulou-exterior-glow.png",
+    battleGroundYard: "/images/board/kepi_battle-ground-yard-v1.png",
     battleBg: "/images/board/kepi_battle-background.png",
     endingBg: "/images/ending/kepi_ending-background.png",
     seaPassage: "/images/ending/kepi_wind-wave-background.png",

@@ -31,9 +31,8 @@ import { combatUnitsFromSnapshot } from "@/lib/game/combatUnits";
 import { loadCachedImage } from "@/lib/game/imageCache";
 import {
   TULOU_BACKGROUND_SRCS,
-  tulouRepairStageForValue,
+  tulouExteriorForRepair,
 } from "@/lib/game/tulouBackground";
-import { TULOU_BOARD_ASSETS } from "@/lib/game/assets";
 import type { BoardPosition, Enemy, GameSnapshot, Piece } from "@/types";
 import { hitTestUnits } from "@/lib/game/unitHitTest";
 import {
@@ -335,8 +334,9 @@ export function useGameCanvas(
 
   const preloadTulouStage = useCallback((repair: number) => {
     const onLoad = () => paintRef.current();
-    const stageSrc = tulouRepairStageForValue(repair).src;
-    loadCachedImage(imageCache.current, stageSrc, onLoad, { retryOnError: true });
+    loadCachedImage(imageCache.current, tulouExteriorForRepair(repair), onLoad, {
+      retryOnError: true,
+    });
     paintRef.current();
   }, []);
 
@@ -358,7 +358,7 @@ export function useGameCanvas(
     const onLoad = () => paintRef.current();
     const cache = imageCache.current;
 
-    loadCachedImage(cache, TULOU_BOARD_ASSETS.stage1, onLoad, { retryOnError: true });
+    loadCachedImage(cache, TULOU_BACKGROUND_SRCS[0], onLoad, { retryOnError: true });
     for (const src of TULOU_BACKGROUND_SRCS) {
       loadCachedImage(cache, src, onLoad, { retryOnError: true });
     }

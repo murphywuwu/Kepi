@@ -15,13 +15,13 @@ export const BOARD_ANCHOR = {
   /** Default fallback — kept for tests and non-combat views. */
   allyBottomRatio: 0.52,
   /** Prep phase — fixed anchor; UI chrome floats above canvas. */
-  prepAllyBottomRatio: 0.42,
+  prepAllyBottomRatio: 0.5,
   /** @deprecated Use prepAllyBottomRatio — kept for callers migrating off dock toggle. */
-  prepAllyBottomCollapsed: 0.42,
+  prepAllyBottomCollapsed: 0.5,
   /** @deprecated Use prepAllyBottomRatio — kept for callers migrating off dock toggle. */
-  prepAllyBottomExpanded: 0.42,
+  prepAllyBottomExpanded: 0.5,
   /** Battle / settlement — board wider and lower to fill the stage. */
-  battleAllyBottomRatio: 0.62,
+  battleAllyBottomRatio: 0.67,
   battleBoardWidthRatio: 0.62,
   boardWidthRatio: 0.44,
   boardHeightRatio: 0.34,

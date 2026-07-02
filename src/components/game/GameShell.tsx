@@ -18,7 +18,6 @@ import { isNarrativePhase } from "@/lib/game/journeyUi";
 import { isPrepInteractive } from "@/lib/game/prepUi";
 import { OpeningBuffLayer } from "./OpeningBuffLayer";
 import { AssassinWarningLayer } from "./AssassinWarningLayer";
-import { BattleFooter } from "./BattleFooter";
 import { LeafFallLayer } from "./LeafFallLayer";
 import { PawnShopPanel } from "./PawnShopPanel";
 import { PrepGuideLayer } from "./PrepGuideLayer";
@@ -127,7 +126,6 @@ export function GameShell() {
         <AssassinWarningLayer />
         <OpeningBuffLayer />
         <BattleOverlay />
-        <BattleFooter />
         <SettlementOverlay />
         {phase === "prep" ? <StageBriefOverlay /> : null}
       </GameChrome>

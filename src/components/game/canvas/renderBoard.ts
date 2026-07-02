@@ -8,6 +8,7 @@ import {
   NEUTRAL_ROWS,
   zoneRowBounds,
 } from "@/lib/game/boardLayout";
+import { UNIT_FEET_OFFSET_RATIO } from "@/lib/game/unitLayout";
 import {
   drawAssassinWarningRing,
   drawPlacementHintRing,
@@ -74,7 +75,8 @@ function drawEnemyPlacementSlots(
 
   const { metrics } = state;
   for (const cell of allEnemyCells()) {
-    const { x, y } = boardToPixel(cell, metrics);
+    const { x, y: cellY } = boardToPixel(cell, metrics);
+    const y = cellY + metrics.cellSize * UNIT_FEET_OFFSET_RATIO;
     const r = metrics.cellSize * 0.34;
     ctx.save();
     ctx.fillStyle = "rgba(193,18,31,0.05)";

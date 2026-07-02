@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   ALLY_ROWS,
   BOARD_ANCHOR,
+  allyBottomRatioForPrep,
+  battleBoardAnchors,
   boardToPixel,
   computeBoardMetrics,
   ENEMY_ROWS,
@@ -16,6 +18,15 @@ describe("boardLayout zones", () => {
     const frontRowY =
       metrics.originY + (ALLY_ROWS[ALLY_ROWS.length - 1]! + 0.5) * metrics.cellSize;
     expect(frontRowY / metrics.height).toBeCloseTo(BOARD_ANCHOR.allyBottomRatio, 2);
+  });
+
+  it("places combat rows lower than the default board anchor", () => {
+    const anchors = battleBoardAnchors();
+    expect(anchors.allyBottomRatio).toBeGreaterThan(BOARD_ANCHOR.allyBottomRatio);
+  });
+
+  it("places prep rows low enough for the ground background", () => {
+    expect(allyBottomRatioForPrep()).toBeGreaterThan(0.45);
   });
 
   it("keeps enemy rows above ally rows with neutral buffer", () => {

@@ -1,5 +1,5 @@
 import { loadCachedImage, type ImageCache } from "@/lib/game/imageCache";
-import { resolveTulouBackgroundLayers } from "@/lib/game/tulouBackground";
+import { resolveSceneBackgroundLayers } from "@/lib/game/tulouBackground";
 import type { CanvasRenderState, CanvasTheme } from "./types";
 
 /** Image focal point for object-cover crop (matches tulou courtyard center). */
@@ -12,7 +12,7 @@ export function renderBackgroundLayer(
   theme: CanvasTheme,
 ): void {
   const { width, height } = state.metrics;
-  const layers = resolveTulouBackgroundLayers(state.homeRepair);
+  const layers = resolveSceneBackgroundLayers(state.phase, state.homeRepair);
   let drewAny = false;
 
   for (const layer of layers) {

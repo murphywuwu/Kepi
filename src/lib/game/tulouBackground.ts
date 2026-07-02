@@ -1,4 +1,6 @@
+import { ASSET_MANIFEST } from "@/data/assets";
 import { TULOU_BOARD_ASSETS, type TulouRepairStage } from "@/lib/game/assets";
+import type { ScenePhase } from "@/types";
 
 export type BackgroundLayer = {
   src: string;
@@ -33,14 +35,35 @@ export function tulouRepairStageForValue(homeRepair: number): TulouRepairStageDe
 }
 
 export function resolveTulouBackgroundLayers(homeRepair: number): BackgroundLayer[] {
-  return [{ src: tulouRepairStageForValue(homeRepair).src, alpha: 1 }];
+  return [{ src: tulouExteriorForRepair(homeRepair), alpha: 1 }];
+}
+
+const EXTERIOR = ASSET_MANIFEST.board;
+
+export const BATTLE_GROUND_SRC = EXTERIOR.battleGroundYard;
+
+/** Exterior tulou backdrop — 4 tiers keyed to home repair (33 / 66 / 99). */
+export function tulouExteriorForRepair(homeRepair: number): string {
+  if (homeRepair >= 99) return EXTERIOR.tulouExteriorGlow;
+  if (homeRepair >= 66) return EXTERIOR.tulouExteriorRenew;
+  if (homeRepair >= 33) return EXTERIOR.tulouExteriorRepair;
+  return EXTERIOR.tulouExteriorRuined;
+}
+
+export function resolveSceneBackgroundLayers(
+  phase: ScenePhase,
+  homeRepair: number,
+): BackgroundLayer[] {
+  if (phase === "prep" || phase === "battle" || phase === "settlement") {
+    return [{ src: BATTLE_GROUND_SRC, alpha: 1 }];
+  }
+  return resolveTulouBackgroundLayers(homeRepair);
 }
 
 export const TULOU_BACKGROUND_SRCS = [
-  TULOU_BOARD_ASSETS.stage1,
-  TULOU_BOARD_ASSETS.stage2,
-  TULOU_BOARD_ASSETS.stage3,
-  TULOU_BOARD_ASSETS.stage4,
-  TULOU_BOARD_ASSETS.stage5,
-  TULOU_BOARD_ASSETS.stage6,
+  BATTLE_GROUND_SRC,
+  EXTERIOR.tulouExteriorRuined,
+  EXTERIOR.tulouExteriorRepair,
+  EXTERIOR.tulouExteriorRenew,
+  EXTERIOR.tulouExteriorGlow,
 ] as const;

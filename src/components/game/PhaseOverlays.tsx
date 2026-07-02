@@ -16,7 +16,7 @@ import {
 import { buildTurnNarrativeInput } from "@/lib/ai/buildTurnNarrativeInput";
 import { useFxStore } from "@/store/fxStore";
 import { useGameStore } from "@/store/gameStore";
-import type { GameSnapshot, GameState, SettlementSummary } from "@/types";
+import type { GameState, SettlementSummary } from "@/types";
 import { cn } from "@/lib/utils";
 import { GameIcon, WoodButton, WoodPanel } from "@/components/game/ui";
 import { SettlementNarrative } from "@/components/game/SettlementNarrative";
@@ -72,7 +72,6 @@ export function SettlementOverlay() {
     return (
       <WonSettlementOverlay
         key={settlementKey}
-        snapshot={snapshot}
         state={state}
         settlement={settlement}
         repairLabel={repairLabel}
@@ -86,7 +85,6 @@ export function SettlementOverlay() {
   return (
     <SettlementSummaryCard
       won={won}
-      snapshot={snapshot}
       state={state}
       settlement={settlement}
       repairLabel={repairLabel}
@@ -98,7 +96,6 @@ export function SettlementOverlay() {
 }
 
 function WonSettlementOverlay({
-  snapshot,
   state,
   settlement,
   repairLabel,
@@ -106,7 +103,6 @@ function WonSettlementOverlay({
   narrativeKey,
   narrativeInput,
 }: {
-  snapshot: GameSnapshot;
   state: GameState;
   settlement: SettlementSummary;
   repairLabel: string;
@@ -179,7 +175,6 @@ function WonSettlementOverlay({
       ) : null}
       <SettlementSummaryCard
         won
-        snapshot={snapshot}
         state={state}
         settlement={settlement}
         repairLabel={repairLabel}
@@ -229,6 +224,24 @@ function settlementSubtitle(
     "胜局成立，但水客未上场或未能护信，本回合无客批与桑梓。";
 }
 
+function settlementCtaLabel({
+  won,
+  state,
+  settlement,
+}: {
+  won: boolean;
+  state: GameState;
+  settlement?: SettlementSummary | null;
+}): string {
+  if (state.survival <= 0 || state.journeyIndex >= state.totalNodes - 1) {
+    return "查看结局";
+  }
+  if (!won) return "重整再战";
+  if (!settlement || settlement.kebiGained <= 0) return "继续前行";
+
+  return levelInteractionForNode(state.currentNodeId)?.settlement.cta ?? "进入下一关";
+}
+
 function FinalSettlementGateBanner({
   state,
   won,
@@ -273,7 +286,6 @@ function FinalSettlementGateBanner({
 
 function SettlementSummaryCard({
   won,
-  snapshot,
   state,
   settlement,
   repairLabel,
@@ -282,7 +294,6 @@ function SettlementSummaryCard({
   narrativeInput,
 }: {
   won: boolean;
-  snapshot: GameSnapshot;
   state: GameState;
   settlement?: SettlementSummary | null;
   repairLabel: string;
@@ -292,15 +303,10 @@ function SettlementSummaryCard({
 }) {
   const backdrop = settlementBackdropSrc(won, settlement);
   const interaction = levelInteractionForNode(state.currentNodeId);
-  const nextLabel =
-    state.survival <= 0 || state.journeyIndex >= state.totalNodes - 1
-      ? "查看结局"
-      : won
-        ? (interaction?.settlement.cta ?? "进入下一关")
-        : "重整再战";
+  const nextLabel = settlementCtaLabel({ won, state, settlement });
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4 pt-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center px-4 py-[max(1rem,env(safe-area-inset-bottom))]">
       {backdrop ? (
         <>
           <Image

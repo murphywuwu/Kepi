@@ -6,7 +6,7 @@ import {
   UNIT_SPRITE_HEIGHT_RATIO,
 } from "@/lib/game/unitLayout";
 import { ENEMY_VISUALS, PIECE_VISUALS } from "@/lib/game/assets";
-import type { Enemy, Piece } from "@/types";
+import type { Piece } from "@/types";
 import { loadCachedImage, type ImageCache } from "@/lib/game/imageCache";
 import type { CanvasRenderState, CanvasTheme } from "./types";
 
@@ -20,7 +20,11 @@ type UnitDrawJob = {
   stroke: string;
   portrait: string;
   placeholder: string;
-  selected: boolean;
+  visibleBounds?: {
+    left: number;
+    right: number;
+    bottom: number;
+  };
   hovered: boolean;
   hpRatio: number;
   showHpBar: boolean;
@@ -99,27 +103,6 @@ function drawPreviewRing(
   ctx.setLineDash([cellSize * 0.1, cellSize * 0.08]);
   ctx.beginPath();
   ctx.ellipse(x, feetY, cellSize * 0.36, cellSize * 0.13, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawProtectRing(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  feetY: number,
-  cellSize: number,
-  hpRatio: number,
-): void {
-  const stroke =
-    hpRatio <= 0.3 ? "#e63946" : hpRatio <= 0.5 ? "#ffd166" : "#8ecae6";
-  const pulse = 0.65 + 0.35 * Math.sin(performance.now() * 0.008);
-
-  ctx.save();
-  ctx.strokeStyle = stroke;
-  ctx.lineWidth = hpRatio <= 0.3 ? 3 : 2;
-  ctx.globalAlpha = hpRatio <= 0.3 ? pulse : 0.85;
-  ctx.beginPath();
-  ctx.ellipse(x, feetY, cellSize * 0.44, cellSize * 0.16, 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }
@@ -205,7 +188,7 @@ function drawUnit(
     stroke,
     portrait,
     placeholder,
-    selected,
+    visibleBounds,
     hovered,
     hpRatio,
     showHpBar,
@@ -226,12 +209,6 @@ function drawUnit(
   if (hovered) {
     drawFootGlow(ctx, drawXBase, feetYBase, cellSize, stroke, 0.62);
     drawHoverRing(ctx, drawXBase, feetYBase, cellSize, stroke);
-  } else if (selected) {
-    drawFootGlow(ctx, drawXBase, feetYBase, cellSize, stroke);
-  }
-
-  if (job.pieceType === "shuike" && showHpBar && !preview) {
-    drawProtectRing(ctx, drawXBase, feetYBase, cellSize, hpRatio);
   }
 
   const portraitImg = loadPortrait(cache, portrait, placeholder, onLoad);
@@ -243,8 +220,12 @@ function drawUnit(
   if (portraitImg) {
     const aspect = portraitImg.naturalWidth / portraitImg.naturalHeight || 0.75;
     const spriteWidth = spriteHeight * aspect;
-    const drawX = drawXBase - spriteWidth / 2;
-    const drawY = feetYBase - spriteHeight;
+    const visibleCenter = visibleBounds
+      ? (visibleBounds.left + visibleBounds.right) / 2
+      : 0.5;
+    const visibleBottom = visibleBounds?.bottom ?? 1;
+    const drawX = drawXBase - spriteWidth * visibleCenter;
+    const drawY = feetYBase - spriteHeight * visibleBottom;
 
     ctx.drawImage(portraitImg, drawX, drawY, spriteWidth, spriteHeight);
 
@@ -306,7 +287,7 @@ export function renderUnitsLayer(
       stroke: theme.allyStroke,
       portrait: meta.portrait,
       placeholder: meta.placeholder,
-      selected: state.selectedPieceId === piece.id,
+      visibleBounds: meta.visibleBounds,
       hovered:
         hovered?.side === "ally" &&
         hovered.unitId === piece.id &&
@@ -338,7 +319,7 @@ export function renderUnitsLayer(
       stroke: theme.enemyStroke,
       portrait: meta.portrait,
       placeholder: meta.placeholder,
-      selected: false,
+      visibleBounds: meta.visibleBounds,
       hovered: hovered?.side === "enemy" && hovered.unitId === enemy.id,
       hpRatio: enemy.hp / enemy.maxHp,
       showHpBar: showHpBar && !enemyPreview,
@@ -424,7 +405,7 @@ function renderPlacementGhost(
       stroke: theme.allyStroke,
       portrait: meta.portrait,
       placeholder: meta.placeholder,
-      selected: false,
+      visibleBounds: meta.visibleBounds,
       hovered: false,
       hpRatio: 1,
       showHpBar: false,
