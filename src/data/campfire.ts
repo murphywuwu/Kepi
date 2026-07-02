@@ -90,7 +90,7 @@ export const CAMPFIRE_SCENARIOS: readonly CampfireScenario[] = [
       {
         id: "share-repair",
         title: "寄回修屋",
-        description: "把另一半的心意，换成土楼里的砖瓦。",
+        description: "把同伴的心意，换成土楼里的砖瓦。",
         aftermath: "砖瓦记在账上，土楼又亮了一寸。",
         effect: { kind: "homeRepair", homeRepair: 8, label: "家园修复 +8%" },
       },
