@@ -4,6 +4,30 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/NotoSansSC-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/NotoSansSC-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/NotoSansSC-Bold.ttf") format("truetype");
+}
+
 @theme inline {
   --color-kepi-scene: var(--kepi-scene);
   --color-kepi-panel: var(--kepi-panel);
@@ -37,6 +61,7 @@
 }
 
 :root {
+  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   /* Kepi warm dusk palette */
   --kepi-scene: #0f1218;
   --kepi-scene-glow: rgba(150, 165, 190, 0.05);

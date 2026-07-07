@@ -62,3 +62,10 @@ __pycache__/
 scripts/__pycache__/
 output
 tmp
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+.tef_dist/*
+.agents
+  
