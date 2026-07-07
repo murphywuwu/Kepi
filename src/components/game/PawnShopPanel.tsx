@@ -47,7 +47,12 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
   const holdTimerRef = useRef<number | null>(null);
   const holdStartRef = useRef<number | null>(null);
   const holdFrameRef = useRef<number | null>(null);
-  const busy = ritual === "burning" || ritual === "gold" || sealFlash;
+  // 同步 ref 防止 React 批处理导致的竞态窗口
+  const busyRef = useRef(false);
+  // 独立追踪 hold 状态，避免 clearHold 闭包拿到过期的 ritual 值
+  const holdingRef = useRef(false);
+  const busy = ritual !== "idle" || sealFlash;
+  busyRef.current = busy;
 
   const canPawn = state.kebi >= 1 && !busy;
 
@@ -62,10 +67,14 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
     }
     holdStartRef.current = null;
     setHoldProgress(0);
-    if (ritual === "holding") setRitual("idle");
-  }, [ritual]);
+    if (holdingRef.current) {
+      holdingRef.current = false;
+      setRitual("idle");
+    }
+  }, []);
 
   const runPawnSequence = useCallback(() => {
+    holdingRef.current = false;
     setRitual("burning");
     playPawnStampSfx();
 
@@ -91,6 +100,7 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
     }
 
     clearHold();
+    holdingRef.current = true;
     setRitual("holding");
     holdStartRef.current = performance.now();
 
@@ -113,8 +123,10 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
   };
 
   const borrow = () => {
-    if (busy) return;
+    if (busyRef.current) return;
 
+    // 取消任何正在进行的 hold，避免定时间竞态
+    clearHold();
     setSealFlash(true);
     playPawnStampSfx();
 
@@ -132,7 +144,10 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
   };
 
   const leave = () => {
-    if (busy) return;
+    if (busyRef.current) return;
+
+    // 取消任何正在进行的 hold，确保退出前清理干净
+    clearHold();
     dispatch({ type: "LEAVE_PAWN_SHOP" });
     pushToast("离开典当行，继续归乡", "default");
   };
