@@ -64,7 +64,7 @@ export const STAGES: readonly StageDefinition[] = Array.from(
       enemyCount: enemyCountForStage(stage),
       scaling: stageScaling(stage),
       enemyPool: interaction?.enemyComposition ?? enemyPoolForStage(stage),
-      prepTimeSec: 30,
+      prepTimeSec: BALANCE.battle.prepTimeSec,
       difficulty,
       aiDynamic: stage >= 7,
       boardAsset: tulouStageForRepair(expectedHomeRepair).boardAsset,

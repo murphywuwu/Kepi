@@ -1,4 +1,4 @@
-import type { GameAction, GameSnapshot } from "@/types";
+import type { BattleResult, GameAction, GameSnapshot } from "@/types";
 import { BALANCE } from "@/data";
 import { advanceBattleTick, syncBoardFromBattle } from "./battle";
 import { SNAPSHOT_VERSION } from "./constants";
@@ -106,6 +106,23 @@ export function reduceGameState(
 
     case "START_BATTLE":
       return beginOpeningBuffPhase(snapshot);
+
+    case "FORFEIT_STAGE": {
+      if (snapshot.phase !== "prep") return snapshot;
+      const forfeitResult: BattleResult = {
+        won: false,
+        tick: 0,
+        elapsedMs: 0,
+        events: [],
+        alliesRemaining: 0,
+        enemiesRemaining: 0,
+        allyHpPercent: 0,
+        enemyHpPercent: 1,
+        waterGuest: { pieceId: null, deployed: false, survived: false, died: false },
+      };
+      const settled = settleStage(snapshot, forfeitResult);
+      return transitionPhase(settled, "settlement");
+    }
 
     case "CATCH_OPENING_BUFF": {
       const caught = catchOpeningBuff(snapshot);

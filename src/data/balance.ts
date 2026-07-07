@@ -53,7 +53,7 @@ export const BALANCE = {
     tickMs: 8,
     maxMs: 40_000,
     ticksPerFrameCap: 22,
-    prepTimeSec: 30,
+    prepTimeSec: 35,
     damageFormula: "atk * 100 / (100 + armor)" as const,
     /** Tuning knob — lowers enemy HP so typical lineups finish before the 40s cap. */
     enemyHpFactor: 0.55,

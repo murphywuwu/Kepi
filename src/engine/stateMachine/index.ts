@@ -9,6 +9,7 @@ const PREP_ACTIONS = new Set<GameAction["type"]>([
   "PAWN_KEBI",
   "BORROW_AGAINST_RETURN",
   "START_BATTLE",
+  "FORFEIT_STAGE",
 ]);
 
 const OPENING_BUFF_ACTIONS = new Set<GameAction["type"]>([

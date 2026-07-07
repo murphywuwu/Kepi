@@ -2,7 +2,14 @@
 
 import { useEffect } from "react";
 import { loadSnapshot, hasSavedSnapshot } from "@/lib/storage/snapshot";
-import { initBgm, setBgmScene, type BgmSceneId } from "@/lib/audio/bgm";
+import {
+  initBgm,
+  setBgmScene,
+  setBattleContext,
+  clearBattleContext,
+  setRouteProgress,
+  type BgmSceneId,
+} from "@/lib/audio/bgm";
 import { ensureGestureResume, setMasterVolume } from "@/lib/audio/context";
 import { loadSettings } from "@/lib/storage/settings";
 import { useGameStore } from "@/store/gameStore";
@@ -17,6 +24,7 @@ import { GameChrome } from "./GameChrome";
 import { GameDialogs } from "./GameDialogs";
 import { isNarrativePhase } from "@/lib/game/journeyUi";
 import { isPrepInteractive } from "@/lib/game/prepUi";
+import { BALANCE } from "@/data";
 import { OpeningBuffLayer } from "./OpeningBuffLayer";
 import { AssassinWarningLayer } from "./AssassinWarningLayer";
 import { LeafFallLayer } from "./LeafFallLayer";
@@ -27,13 +35,16 @@ import { SettingsMenu } from "./SettingsMenu";
 import { ToastHost } from "./ToastHost";
 import { UnitInspectOverlay } from "./UnitInspectOverlay";
 import { PieceInspectTooltip } from "./PieceInspectTooltip";
+import { levelInteractionForNode } from "@/data/levelInteractions";
+import { currentJourneyNode, isFinalJourneyNode } from "@/engine/journey";
 
-const PREP_TIMEOUT_MS = 30_000;
+const PREP_TIMEOUT_MS = BALANCE.battle.prepTimeSec * 1000;
 
 export function GameShell() {
   const snapshot = useGameStore((state) => state.snapshot);
   const replaceSnapshot = useGameStore((state) => state.replaceSnapshot);
   const startBattle = useGameStore((state) => state.startBattle);
+  const forfeitStage = useGameStore((state) => state.forfeitStage);
   const selectedPieceId = useGameStore((state) => state.selectedPieceId);
   const moveSelected = useGameStore((state) => state.moveSelected);
   const setSelectedPiece = useGameStore((state) => state.setSelectedPiece);
@@ -68,24 +79,48 @@ export function GameShell() {
   }, [phase, setDomPieceInspect]);
 
   // 按剧情 phase 切换生成式 BGM 场景（见 docs/kepi_audio-design_v1.md §4.2）
+  // V3.2+：battle 场景按敌人类型/关卡序号差异化；route 场景按路线进度渐强
   useEffect(() => {
     const scene = phaseToBgmScene(phase);
     setBgmScene(scene);
-  }, [phase]);
+
+    // battle 场景：注入战斗上下文（敌人/关卡/终关标记）
+    if (phase === "battle") {
+      const node = currentJourneyNode(snapshot);
+      const interaction = levelInteractionForNode(snapshot.state.currentNodeId);
+      const isFinal = isFinalJourneyNode(snapshot);
+      if (interaction && node) {
+        setBattleContext({
+          stage: snapshot.state.stage,
+          featuredEnemy: interaction.featuredEnemy,
+          tone: interaction.tone,
+          isFinal,
+        });
+      }
+    } else {
+      clearBattleContext();
+    }
+
+    // route 场景（prep/settlement/opening_buff）：设置路线进度驱动渐强
+    if (scene === "route") {
+      setRouteProgress(snapshot.state.journeyIndex);
+    }
+  }, [phase, snapshot]);
 
   useEffect(() => {
     if (phase !== "prep" || !isPrepInteractive(prepSubview)) return;
 
     const timer = window.setTimeout(() => {
       if (!startBattle()) {
-        pushToast("备战超时，请先购买棋子", "error");
+        forfeitStage();
+        pushToast("备战超时，未布阵 — 本关判负", "error");
         return;
       }
       pushToast("备战超时，自动开战", "default");
     }, PREP_TIMEOUT_MS);
 
     return () => window.clearTimeout(timer);
-  }, [phase, prepSubview, state.journeyIndex, startBattle, pushToast]);
+  }, [phase, prepSubview, state.journeyIndex, startBattle, forfeitStage, pushToast]);
 
   if (phase === "ending") {
     return (

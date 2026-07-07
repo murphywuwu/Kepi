@@ -13,6 +13,7 @@ type GameStore = {
   sellSelected: () => boolean;
   moveSelected: (position: BoardPosition) => boolean;
   startBattle: () => boolean;
+  forfeitStage: () => void;
   endBattle: () => void;
   applyHomeRepair: () => boolean;
   advanceStage: () => void;
@@ -81,6 +82,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const placed = board.filter((piece) => piece.position !== null && piece.hp > 0);
     if (placed.length === 0) return false;
     return apply(set, get, { type: "START_BATTLE" });
+  },
+
+  forfeitStage: () => {
+    apply(set, get, { type: "FORFEIT_STAGE" });
   },
 
   endBattle: () => {

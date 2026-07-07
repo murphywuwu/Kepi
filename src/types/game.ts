@@ -223,6 +223,7 @@ export type GameAction =
   | { type: "PAWN_KEBI" }
   | { type: "BORROW_AGAINST_RETURN" }
   | { type: "START_BATTLE" }
+  | { type: "FORFEIT_STAGE" }
   | { type: "CATCH_OPENING_BUFF" }
   | { type: "SKIP_OPENING_BUFF" }
   | { type: "BATTLE_TICK" }
