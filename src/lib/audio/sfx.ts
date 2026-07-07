@@ -9,10 +9,13 @@
 import {
   noteToFreq,
   playChord,
+  playGong,
   playGlide,
   playNoise,
   playPluck,
+  playTaiko,
   playTone,
+  playWoodblock,
 } from "./synth";
 import type { EnemyType, HomeRepairTier } from "@/types";
 
@@ -20,15 +23,17 @@ const freq = (note: string): number => noteToFreq(note);
 
 /* --------------------------- 商店 / 备战 --------------------------- */
 
-/** 购买棋子：上行两音拨弦（明亮）。 */
+/** 购买棋子：木鱼轻击 + 上行两音拨弦（明亮）。 */
 export function playBuySfx(): void {
+  playWoodblock(1900, { durationMs: 70, gain: 0.18 });
   playPluck(freq("C5"), { gain: 0.4 });
   window.setTimeout(() => playPluck(freq("G5"), { gain: 0.32 }), 70);
 }
 
-/** 刷新商店：快速噪声扫频 + 轻拨。 */
+/** 刷新商店：快速噪声扫频 + 木鱼 + 轻拨。 */
 export function playRefreshSfx(): void {
   playNoise({ durationMs: 150, frequency: 2000, q: 0.7, gain: 0.2, type: "bandpass" });
+  playWoodblock(2200, { durationMs: 60, gain: 0.16 });
   window.setTimeout(() => playPluck(freq("E5"), { gain: 0.28 }), 60);
 }
 
@@ -37,7 +42,7 @@ export function playPopulationSfx(): void {
   playChord([freq("C4"), freq("E4"), freq("G4")], { type: "triangle", gain: 0.3, durationMs: 420 });
 }
 
-/** 升星：前置主题 B「家」C4→G4 暖拨弦 + 闪光三连音上行 + 微噪。 */
+/** 升星：前置主题 B「家」C4→G4 暖拨弦 + 闪光三连音上行 + 微噪 + 升星 shimmer 锣。 */
 export function playStarUpSfx(): void {
   // 主题 B 片段（家的根音对位），温暖低拨
   playPluck(freq("C4"), { gain: 0.3, durationMs: 200 });
@@ -48,6 +53,7 @@ export function playStarUpSfx(): void {
     window.setTimeout(() => playPluck(freq(n), { gain: 0.4 }), 140 + i * 55),
   );
   playNoise({ durationMs: 120, frequency: 6000, q: 2, gain: 0.1, type: "highpass" });
+  window.setTimeout(() => playGong({ gain: 0.16, fundamental: 520 }), 300);
 }
 
 /** 卖出棋子：下行轻音。 */
@@ -58,8 +64,10 @@ export function playSellSfx(): void {
 
 /* --------------------------- 结算 / 收信 --------------------------- */
 
-/** 收信：主题 A 句尾拖腔（G4 长延音）+ 柔和钟铃。 */
+/** 收信：木鱼盖章 + 主题 A 句尾拖腔（G4 长延音）+ 柔和钟铃。 */
 export function playCollectLetterSfx(): void {
+  // 收信"接住"的木鱼轻击
+  playWoodblock(1400, { durationMs: 90, gain: 0.2 });
   // 主题 A 拖腔：客家山歌句尾下滑
   playTone({ freq: freq("G4"), type: "sine", durationMs: 360, attackMs: 8, releaseMs: 300, gain: 0.22 });
   playTone({ freq: freq("E6"), type: "sine", durationMs: 420, attackMs: 4, releaseMs: 320, gain: 0.3 });
@@ -69,13 +77,13 @@ export function playCollectLetterSfx(): void {
   );
 }
 
-/** 家园修缮：低频木鱼/水滴。 */
+/** 家园修缮：战鼓低 thud（夯土感）+ 木质 noise。 */
 export function playRepairHomeSfx(): void {
-  playTone({ freq: freq("C3"), type: "sine", durationMs: 280, releaseMs: 200, gain: 0.38 });
+  playTaiko({ gain: 0.34, pitchFrom: 150, pitchTo: 60 });
   playNoise({ durationMs: 90, frequency: 400, q: 1, gain: 0.1, type: "lowpass" });
 }
 
-/** 胜利：主题 B「家」C-G-C 和弦 swell + 五声音阶上行收束。 */
+/** 胜利：主题 B「家」C-G-C 和弦 swell + 五声音阶上行收束 + 收束大锣。 */
 export function playWinSfx(): void {
   // 主题 B 和弦 swell（家的稳固收束）
   playChord([freq("C4"), freq("G4"), freq("C5")], { type: "sine", gain: 0.22, durationMs: 480 });
@@ -84,10 +92,13 @@ export function playWinSfx(): void {
   notes.forEach((n, i) =>
     window.setTimeout(() => playPluck(freq(n), { gain: 0.34 }), 120 + i * 90),
   );
+  // 收束大锣（凯旋/归乡）
+  window.setTimeout(() => playGong({ gain: 0.22, fundamental: 260 }), 120 + 5 * 90);
 }
 
-/** 失败：下行低沉两音。 */
+/** 失败：战鼓闷击 + 下行低沉两音。 */
 export function playLoseSfx(): void {
+  playTaiko({ gain: 0.3, pitchFrom: 120, pitchTo: 50 });
   playTone({ freq: freq("A3"), type: "sine", durationMs: 420, releaseMs: 400, gain: 0.34 });
   window.setTimeout(
     () => playTone({ freq: freq("E3"), type: "sine", durationMs: 520, releaseMs: 500, gain: 0.32 }),
@@ -132,13 +143,18 @@ export function playCampfireChoiceSfx(): void {
 
 let lastHitAt = 0;
 
-/** 攻击/受击：短促噪声 burst，按伤害轻微变调（内部节流，避免音爆）。 */
+/** 攻击/受击：膜鸣 thump（按伤害变调）+ 短促噪声 burst（内部节流，避免音爆）。 */
 export function playHitSfx(damage = 10): void {
   const now = typeof performance !== "undefined" ? performance.now() : Date.now();
   if (now - lastHitAt < 80) return;
   lastHitAt = now;
-  const center = 160 + Math.min(Math.max(damage, 1), 80) * 4;
-  playNoise({ durationMs: 70, frequency: center, q: 0.8, gain: 0.16, type: "bandpass" });
+  const clamped = Math.min(Math.max(damage, 1), 80);
+  // 膜鸣主体（受击的"肉感"），伤害越高越低沉
+  const from = 200 - clamped * 1.2;
+  playTaiko({ gain: 0.22, pitchFrom: from, pitchTo: from * 0.45 });
+  // 噪声攻击层
+  const center = 160 + clamped * 4;
+  playNoise({ durationMs: 70, frequency: center, q: 0.8, gain: 0.14, type: "bandpass" });
 }
 
 /** 技能释放：上扬滑音。 */
@@ -199,9 +215,9 @@ export function playWaterGuestDeathSfx(voiceSrc?: string): void {
   }
 }
 
-/** 土楼·护盾（tier≥1）：低频木鱼。 */
+/** 土楼·护盾（tier≥1）：低频木鱼/夯土 thud。 */
 export function playTulouShieldSfx(): void {
-  playTone({ freq: freq("C3"), type: "triangle", durationMs: 240, releaseMs: 180, gain: 0.32 });
+  playWoodblock(700, { durationMs: 130, gain: 0.34 });
   playNoise({ durationMs: 80, frequency: 500, q: 1, gain: 0.1, type: "lowpass" });
 }
 
@@ -251,12 +267,14 @@ export function playEnemyAttackSfx(enemyType: EnemyType, damage = 10): void {
 
   switch (enemyType) {
     case "qianhaibei":
-      // 迁海碑·石碑/官印：闷石击（低通噪声 + 低 sine thud）
+      // 迁海碑·石碑/官印：战鼓闷击 + 闷石击（低通噪声 + 低 sine thud）
+      playTaiko({ gain: 0.26 * intensity, pitchFrom: 140, pitchTo: 56 });
       playNoise({ durationMs: 120, frequency: 180, q: 0.5, gain: 0.32 * intensity, type: "lowpass" });
       playTone({ freq: freq("A2"), type: "sine", durationMs: 140, releaseMs: 120, gain: 0.3 * intensity });
       break;
     case "luyinguanli":
-      // 路引关吏·纸/盖章：纸张沙沙（高通噪声）+ 短闷击
+      // 路引关吏·纸/盖章：木鱼盖章 + 纸张沙沙（高通噪声）+ 短闷击
+      playWoodblock(1100, { durationMs: 70, gain: 0.2 * intensity });
       playNoise({ durationMs: 90, frequency: 5000, q: 0.8, gain: 0.18 * intensity, type: "highpass" });
       playTone({ freq: freq("D3"), type: "sine", durationMs: 100, releaseMs: 80, gain: 0.24 * intensity });
       break;
@@ -266,7 +284,8 @@ export function playEnemyAttackSfx(enemyType: EnemyType, damage = 10): void {
       playTone({ freq: freq("A5"), type: "square", durationMs: 80, releaseMs: 160, gain: 0.12 * intensity });
       break;
     case "ehushan":
-      // 饿虎山·山/枯田：低频吼（低 sine 颤音 + 低通噪声）
+      // 饿虎山·山/枯田：战鼓低吼 + 低频吼（低 sine 颤音 + 低通噪声）
+      playTaiko({ gain: 0.28 * intensity, pitchFrom: 120, pitchTo: 50 });
       playTone({ freq: freq("G2"), type: "sine", durationMs: 260, releaseMs: 220, gain: 0.3 * intensity, detune: 12 });
       playNoise({ durationMs: 200, frequency: 240, q: 0.6, gain: 0.16 * intensity, type: "lowpass" });
       break;
@@ -276,7 +295,8 @@ export function playEnemyAttackSfx(enemyType: EnemyType, damage = 10): void {
       playNoise({ durationMs: 80, frequency: 1500, q: 0.5, gain: 0.12 * intensity, type: "bandpass" });
       break;
     case "xiedouhuo":
-      // 械斗火·火/农具：火噪声（带通）+ 金属撞击
+      // 械斗火·火/农具：战鼓 + 火噪声（带通）+ 金属撞击
+      playTaiko({ gain: 0.24 * intensity, pitchFrom: 150, pitchTo: 60 });
       playNoise({ durationMs: 160, frequency: 900, q: 0.8, gain: 0.2 * intensity, type: "bandpass" });
       playTone({ freq: freq("C5"), type: "square", durationMs: 70, releaseMs: 140, gain: 0.14 * intensity });
       break;

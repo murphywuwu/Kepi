@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const PREP_TIMEOUT_MS = BALANCE.battle.prepTimeSec * 1000;
 
-/** Compact countdown badge shown next to the settings button during prep. */
+/** Countdown badge shown at top center during prep phase. */
 export function PrepCountdown() {
   const phase = useGameStore((s) => s.snapshot.phase);
   const journeyIndex = useGameStore((s) => s.snapshot.state.journeyIndex);
@@ -58,42 +58,58 @@ export function PrepCountdown() {
 
   return (
     <div
-      className={cn(
-        "kepi-prep-cd relative",
-        isDanger && "kepi-prep-cd--pulse",
-        isWarning && !isDanger && "kepi-prep-cd--warn",
-      )}
-      style={{ width: size, height: size }}
+      className="kepi-prep-cd absolute left-1/2 top-0 z-30 flex -translate-x-1/2 flex-col items-center gap-1 pt-[max(0.75rem,env(safe-area-inset-top))]"
       title={`自动开战倒计时 · 剩余 ${remainingSec} 秒`}
     >
-      <div className="kepi-prep-cd-bg absolute inset-0 rounded-full" />
-      <svg width={size} height={size} className="absolute inset-0 -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="rgba(0, 0, 0, 0.18)"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={ringColor}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          style={{ transition: "stroke 0.3s ease" }}
-        />
-      </svg>
-      <span
-        className="absolute inset-0 flex items-center justify-center text-[0.8125rem] font-bold tabular-nums"
-        style={{ color: "#f5ead6", textShadow: "0 1px 0 rgba(0,0,0,0.32)" }}
+      <div
+        className={cn(
+          "relative",
+          isDanger && "kepi-prep-cd--pulse",
+          isWarning && !isDanger && "kepi-prep-cd--warn",
+        )}
+        style={{ width: size, height: size }}
       >
-        {remainingSec}
+        <div className="kepi-prep-cd-bg absolute inset-0 rounded-full" />
+        <svg width={size} height={size} className="absolute inset-0 -rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="rgba(0, 0, 0, 0.18)"
+            strokeWidth={stroke}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            style={{ transition: "stroke 0.3s ease" }}
+          />
+        </svg>
+        <span
+          className="absolute inset-0 flex items-center justify-center text-[0.8125rem] font-bold tabular-nums"
+          style={{ color: "#f5ead6", textShadow: "0 1px 0 rgba(0,0,0,0.32)" }}
+        >
+          {remainingSec}
+        </span>
+      </div>
+      <span
+        className="text-[0.625rem] font-medium leading-none tracking-wider"
+        style={{
+          color: isDanger
+            ? "rgba(246, 193, 119, 0.7)"
+            : "rgba(245, 234, 214, 0.45)",
+          textShadow: "0 1px 0 rgba(0,0,0,0.2)",
+          transition: "color 0.3s ease",
+        }}
+      >
+        备战倒计时
       </span>
     </div>
   );

@@ -29,6 +29,7 @@ import { OpeningBuffLayer } from "./OpeningBuffLayer";
 import { AssassinWarningLayer } from "./AssassinWarningLayer";
 import { LeafFallLayer } from "./LeafFallLayer";
 import { PawnShopPanel } from "./PawnShopPanel";
+import { PrepCountdown } from "./PrepCountdown";
 import { PrepGuideLayer } from "./PrepGuideLayer";
 import { StageBriefOverlay } from "./StageBriefOverlay";
 import { SettingsMenu } from "./SettingsMenu";
@@ -174,6 +175,7 @@ export function GameShell() {
         {phase === "prep" ? <StageBriefOverlay /> : null}
       </GameChrome>
 
+      <PrepCountdown />
       <UnitInspectOverlay />
       <PieceInspectTooltip />
       <SettingsMenu />

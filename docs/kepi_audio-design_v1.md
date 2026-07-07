@@ -334,7 +334,81 @@ phase + journeyIndex + homeRepairTier + waterGuestHp%
 
 ---
 
-## 11. 相关文档
+## 11. V2 音色重做记录（2026-07-07）
+
+> 背景：用户反馈「音效还是很难听」。在**断网可玩、零素材依赖**硬约束下，无法引入 Suno/Udio 等文件化 AI 音乐，
+> 故 V2 重做聚焦于**程序化合成音色本身的质感与文化辨识度**（即真正能在游戏里发声的部分）。
+
+### 11.1 根因
+
+| 旧症 | 根因 | V2 修复 |
+|---|---|---|
+| 旋律无句法 | `scheduleMelody` 每 tick 随机敲一个动机音、忽略 `beats`，轮廓被压平 | **动机成句**：按每个音的 `beats` 连续奏出乐句，短语首音按密度掷骰，跳过则歇一小节 |
+| 全程干瘪 | 无混响/空间，像合成器 demo | `context.ts` 总线加**算法脉冲响应混响**（山洞感，零文件）+ 暖色低通（4200Hz 缓坡） |
+| pad 糊闷 | C2+G2 双 sine 低频打架 | 改 `triangle` 主体 + 高八度 sine「气声」泛音（极低增益）打开闷感 |
+| 节奏机械 | 40ms 噪声 tick 像节拍器 | 非战斗用**木鱼**（带通瞬态 + 高频正弦），战斗用**战鼓**（膜鸣下滑 + 皮面噪声）；终关强拍加**大锣** |
+| SFX 薄脆 | 受击/胜利/里程碑缺厚度 | 受击加膜鸣 thump；胜利/升星/收信接入**大锣**与**木鱼**；敌人攻击加战鼓/木鱼重量感 |
+| 音乐硬切 | 场景切换直接重配 | `setBgmScene` 走 `crossfadeBgm`（先压到 0.32 再 0.42s 回满） |
+
+### 11.2 新增合成原语（`synth.ts`）
+
+| 原语 | 音色 | 用途 |
+|---|---|---|
+| `playWoodblock(freq)` | 木鱼/梆子：高频正弦 + 带通噪声瞬态 | BGM 节奏层（行路/篝火/典当）、购买/刷新/收信/土楼护盾 |
+| `playTaiko()` | 战鼓：膜鸣正弦下滑（180→64Hz）+ 皮面低通噪声 | 战斗节奏层、受击、失败、家园修缮、敌人重击 |
+| `playGong(fundamental)` | 大锣：6 个非谐泛音簇 + 长衰减 + 颤音闪烁 | 胜利收束、升星 shimmer、终关强拍、土楼免死 |
+| `scheduleVoice(freq, atTime)` | 椰胡/山歌嗓音：sine+triangle 双失谐 + 颤音 LFO + 起音微滑 | BGM 旋律层与主题高光（替代单薄 sine） |
+
+### 11.3 设计原则坚守
+
+- **五声铁律不变**：旋律/和声仍仅用宫商角徵羽，`MOTIFS` 四个动机字节级不变（测试 `synth.test.ts` 全过）。
+- **零素材依赖不变**：混响为算法脉冲响应，全部音色实时合成，断网可玩。
+- **调用契约不变**：`bgm.ts` / `sfx.ts` 公共 API 与签名零改动，所有调用点无需修改。
+
+---
+
+## 12. V3 文件化配乐（Music Cog，2026-07-07）
+
+> 在 V2 程序化音色基础上，引入 **Music Cog（CellCog）生成的成品 MP3** 作为各场景主配乐，
+> 让游戏拥有真实编曲层次与民族乐器质感；同时保留程序化合成作为**缺素材自动回退**，
+> 严格延续「断网可玩、缺素材不影响运行」硬约束。
+
+### 12.1 架构
+
+- 新增 `src/lib/audio/bgmFiles.ts`：文件化 BGM 播放层。单个 `<audio loop>` 经
+  `MediaElementSource → fileBgmGain(0.6) → {masterGain 干, bgmReverbSend→convolver 湿}`，
+  复用全局音量与山洞混响；场景切换走 `fileBgmGain` 交叉淡入。
+- `bgm.ts` 的 `setBgmScene` 改为**文件优先**：命中 `FILE_TRACKS[scene]` 且文件存在则播 MP3
+  并停程序化调度；加载失败（`error` 事件）记入 `failedFileUrls` 并静默重启程序化兜底。
+- `duckBgm/restoreBgm` 同步 duck 文件层（危机时音乐下沉）。
+- `context.ts` 新增 `fileBgmGain` 节点并接入主/混响总线。
+- 结局：`useEndingAudio` 改调 `stopProceduralBgm()`，仅停合成、保留成品「结局底噪」作朗读底床。
+
+### 12.2 曲目清单（scripts/gen_bgm.py，待 CELLCOG_API_KEY 生成）
+
+文件名遵循素材规范 `public/audio/bgm/kepi_bgm_<scene>.mp3`，统一客家五声音阶 + 民族乐器：
+
+| scene | 时长 | 情绪 / 配器 |
+|---|---|---|
+| `menu` | 90s | 乡愁慢板：椰胡独奏 + 古筝 pad + 远笛 + 木鱼心跳 |
+| `route` | 90s | 行路备战：木鱼步伐 + 低胡根音 + 古筝琶音 + 笛变奏 |
+| `campfire` | 80s | 篝火夜话：古筝 + 低胡呢喃 + 木鱼如薪裂 + 山歌气声 |
+| `pawn_shop` | 75s | 典当压抑：低胡颤弓 + 闷锣 + 木裂噪 + 稀疏古筝长混响 |
+| `battle` | 75s | 战斗压迫：战鼓驱动 + 低胡根音 + 古筝断奏 + 笛线 |
+| `battle_final` | 90s | 终关归乡：大鼓 + 英雄椰胡奏乡愁全动机 + 古筝跑动 + 大锣强拍 |
+| `ending` | 120s | 结局底噪：海潮气声 pad + 椰胡哼鸣乡愁 + 极疏笛，低动态留白 |
+
+### 12.3 运行
+
+```bash
+export CELLCOG_API_KEY="sk_..."      # 必需（Music Cog 密钥）
+python3 scripts/gen_bgm.py           # 生成全部 7 曲（已存在跳过）
+python3 scripts/gen_bgm.py menu      # 仅生成指定场景
+```
+
+---
+
+## 13. 相关文档
 
 - [PRD V3.1](kepi_PRD_V3.1.md) — 七关情绪曲线来源
 - [关卡交互设计 v1](kepi_level-interaction-design_v1.md) — 分幕结构

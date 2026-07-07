@@ -283,6 +283,218 @@ export function playSequence(
   }
 }
 
+/* ----------------------------- 民族乐器原语（V2 音色重做） ----------------------------- */
+
+/**
+ * 木鱼 / 梆子：清脆木质短击。高频正弦主体 + 攻击瞬态带通噪声 click，
+ * 快速指数衰减成"tok"。用于 BGM 节奏层（行路/篝火/典当）与若干 UI 音效。
+ */
+export function playWoodblock(
+  freq: number,
+  opts?: { durationMs?: number; gain?: number; destination?: AudioNode | null; delaySeconds?: number },
+): void {
+  const ctx = getAudioContext();
+  const dest = opts?.destination === undefined ? getSfxGain() : opts.destination;
+  if (!ctx || !dest) return;
+  const now = ctx.currentTime + (opts?.delaySeconds ?? 0);
+  const dur = (opts?.durationMs ?? 90) / 1000;
+  const peak = Math.max(0.0001, opts?.gain ?? 0.3);
+
+  // 主体：高频正弦，快速衰减成木质"tok"
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, now);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(peak, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  osc.connect(g);
+  g.connect(dest);
+  osc.start(now);
+  osc.stop(now + dur + 0.02);
+
+  // 攻击瞬态：极短带通噪声，模拟木槌敲击木质
+  const nb = Math.max(1, Math.floor(ctx.sampleRate * 0.012));
+  const buffer = ctx.createBuffer(1, nb, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < nb; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / nb);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = freq * 1.6;
+  filter.Q.value = 2;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(peak * 0.5, now);
+  ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
+  src.connect(filter);
+  filter.connect(ng);
+  ng.connect(dest);
+  src.start(now);
+  src.stop(now + 0.03);
+}
+
+/**
+ * 战鼓（taiko）：低频膜鸣 + 皮面噪声攻击。客家战事/守护的压迫脉动。
+ */
+export function playTaiko(
+  opts?: {
+    gain?: number;
+    pitchFrom?: number;
+    pitchTo?: number;
+    destination?: AudioNode | null;
+    delaySeconds?: number;
+  },
+): void {
+  const ctx = getAudioContext();
+  const dest = opts?.destination === undefined ? getSfxGain() : opts.destination;
+  if (!ctx || !dest) return;
+  const now = ctx.currentTime + (opts?.delaySeconds ?? 0);
+  const peak = Math.max(0.0001, opts?.gain ?? 0.4);
+  const from = opts?.pitchFrom ?? 180;
+  const to = opts?.pitchTo ?? 64;
+
+  // 皮面噪声攻击
+  const nb = Math.max(1, Math.floor(ctx.sampleRate * 0.05));
+  const buffer = ctx.createBuffer(1, nb, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < nb; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / nb);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 380;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(peak * 0.6, now);
+  ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+  src.connect(filter);
+  filter.connect(ng);
+  ng.connect(dest);
+  src.start(now);
+  src.stop(now + 0.08);
+
+  // 膜鸣正弦下滑（"咚"）
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(from, now);
+  osc.frequency.exponentialRampToValueAtTime(to, now + 0.12);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.linearRampToValueAtTime(peak, now + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+  osc.connect(g);
+  g.connect(dest);
+  osc.start(now);
+  osc.stop(now + 0.3);
+}
+
+/**
+ * 大锣（gong）：金属泛音簇 + 长衰减 + 轻微颤音闪烁。客家婚丧/胜利/里程碑。
+ */
+export function playGong(
+  opts?: {
+    gain?: number;
+    fundamental?: number;
+    destination?: AudioNode | null;
+    delaySeconds?: number;
+  },
+): void {
+  const ctx = getAudioContext();
+  const dest = opts?.destination === undefined ? getSfxGain() : opts.destination;
+  if (!ctx || !dest) return;
+  const now = ctx.currentTime + (opts?.delaySeconds ?? 0);
+  const peak = Math.max(0.0001, opts?.gain ?? 0.25);
+  const f0 = opts?.fundamental ?? 220;
+  const ratios = [1, 1.48, 2.07, 2.74, 3.41, 4.23];
+  ratios.forEach((r, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(f0 * r, now);
+    const g = ctx.createGain();
+    const p = peak * (1 / (i + 1.5));
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(p, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.4 - i * 0.12);
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(now);
+    osc.stop(now + 1.5);
+  });
+}
+
+/**
+ * 椰胡 / 山歌嗓音（客家主题旋律线，绝对时间调度版供 BGM 使用）。
+ * 双失谐振荡（sine 主体 + triangle 谐波）带颤音 LFO 与起音微滑，
+ * 比单薄 sine 更有"人声/弓弦"温度。
+ */
+export function scheduleVoice(
+  freq: number,
+  atTime: number,
+  opts?: {
+    durationMs?: number;
+    gain?: number;
+    attackMs?: number;
+    releaseMs?: number;
+    vibratoRate?: number;
+    vibratoDepth?: number;
+    glideFromRatio?: number;
+    destination?: AudioNode | null;
+  },
+): void {
+  const ctx = getAudioContext();
+  const dest = opts?.destination === undefined ? getSfxGain() : opts.destination;
+  if (!ctx || !dest) return;
+
+  const start = Math.max(ctx.currentTime + 0.001, atTime);
+  const duration = (opts?.durationMs ?? 520) / 1000;
+  const attack = (opts?.attackMs ?? 35) / 1000;
+  const release = (opts?.releaseMs ?? 320) / 1000;
+  const peak = Math.max(0.0001, opts?.gain ?? 0.22);
+  const vibRate = opts?.vibratoRate ?? 5.2;
+  const vibDepth = opts?.vibratoDepth ?? 6;
+  const glideFrom = opts?.glideFromRatio ?? 1;
+
+  // 颤音 LFO → 调制两个振荡器的 detune
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  lfo.frequency.setValueAtTime(vibRate, start);
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.setValueAtTime(vibDepth, start);
+  lfo.connect(lfoGain);
+
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0.0001, start);
+  out.gain.linearRampToValueAtTime(peak, start + attack);
+  out.gain.setValueAtTime(peak, Math.max(start + attack, start + duration));
+  out.gain.exponentialRampToValueAtTime(0.0001, start + duration + release);
+  out.connect(dest);
+
+  // 主体 sine（椰胡基音）
+  const oscA = ctx.createOscillator();
+  oscA.type = "sine";
+  oscA.frequency.setValueAtTime(freq * glideFrom, start);
+  oscA.frequency.exponentialRampToValueAtTime(freq, start + 0.06);
+  lfoGain.connect(oscA.detune);
+  oscA.connect(out);
+  oscA.start(start);
+  oscA.stop(start + duration + release + 0.02);
+
+  // 谐波 triangle（更"亮"的弓弦感）
+  const oscB = ctx.createOscillator();
+  oscB.type = "triangle";
+  oscB.frequency.setValueAtTime(freq * glideFrom, start);
+  oscB.frequency.exponentialRampToValueAtTime(freq, start + 0.06);
+  lfoGain.connect(oscB.detune);
+  const harmGain = ctx.createGain();
+  harmGain.gain.setValueAtTime(0.35, start);
+  oscB.connect(harmGain);
+  harmGain.connect(out);
+  oscB.start(start);
+  oscB.stop(start + duration + release + 0.02);
+
+  lfo.start(start);
+  lfo.stop(start + duration + release + 0.02);
+}
+
 /* ----------------------------- BGM 专用原语 ----------------------------- */
 
 export interface PadSwellOptions {
@@ -324,6 +536,20 @@ export function playPadSwell(
       destination: opts?.destination,
       delaySeconds: base + i * 0.012,
     });
+    // V2：泛音"气声"——高八度 sine 极低增益，打开 C2+G2 的闷感
+    if (f * 2 <= 4000) {
+      playTone({
+        freq: f * 2,
+        type: "sine",
+        durationMs: durationMs * 0.8,
+        attackMs: attackMs * 1.2,
+        releaseMs,
+        gain: gain * 0.18,
+        detune: detune,
+        destination: opts?.destination,
+        delaySeconds: base + i * 0.012,
+      });
+    }
   });
 }
 

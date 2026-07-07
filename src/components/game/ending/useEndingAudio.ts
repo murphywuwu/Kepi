@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ArchivalLetter } from "@/data/types";
 import { playCollectLetterSfx, playWaveSfx } from "@/lib/audio/sfx";
-import { stopBgm } from "@/lib/audio/bgm";
+import { stopProceduralBgm } from "@/lib/audio/bgm";
 
 type UseEndingAudioOptions = {
   enabled?: boolean;
@@ -16,8 +16,9 @@ export function useEndingAudio({ enabled = true, volume = 0.8 }: UseEndingAudioO
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    // 结局让位给海浪与客家话朗读：停掉生成式 BGM。
-    stopBgm();
+    // 结局让位给海浪与客家话朗读：停掉程序化 BGM，
+    // 但若已接入成品「结局底噪」MP3（kepi_bgm_ending.mp3）则保留作底床。
+    stopProceduralBgm();
 
     voiceRef.current = new Audio();
     voiceRef.current.volume = volume;

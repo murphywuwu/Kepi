@@ -5,32 +5,65 @@
  *  - 状态机驱动的四层音乐系统：L0 pad / L1 旋律 / L2 节奏 / L3 高光。
  *  - 4 主题动机（Leitmotif）：乡愁 / 家 / 罪恶 / 风浪，按场景变奏。
  *  - 分级 ducking：setBgmScene 设基础层配置，duckBgm/restoreBgm 在其之上叠加危机衰减。
- *  - 客家五声音阶 + 山歌腔（椰胡颤音 detuned pair）+ 木鱼节奏层。
+ *  - 客家五声音阶 + 山歌腔（椰胡颤音 scheduleVoice）+ 木鱼/战鼓节奏层。
  *  - V3.2+ 战斗差异化：按敌人类型注入动机、按关卡序号渐强参数。
  *
- * API：
- *  - initBgm / setBgmVolume / duckBgm / restoreBgm / stopBgm —— 与旧版兼容，调用点零改动。
- *  - setBgmScene(sceneId) —— 按 phase/journey 切换音乐配置。
- *  - setBattleContext(ctx) —— 注入战斗上下文（敌人/关卡/终关标记），动态叠加 battle 场景。
- *  - clearBattleContext() —— 清除战斗上下文（离开战斗时调用）。
- *  - setRouteProgress(index) —— 备战/route 场景的路线进度，驱动渐进增强。
- *  - triggerMotif(motifId) —— 触发主题高光（里程碑/结局收束）。
+ * V2 音色重做要点（见 §6 补充）：
+ *  - 旋律按「动机成句」调度（尊重每个音的 beats），不再是随机单音 plink。
+ *  - 节奏层：非战斗用 木鱼（playWoodblock），战斗用 战鼓（playTaiko）+ 终关强拍大锣。
+ *  - 新增低音脉动层（scheduleBass），给 route/battle 以行进感。
+ *  - 场景切换走 crossfadeBgm，音乐不再硬切。
  *
- * 音量统一受 masterGain（设置音量）控制；bgmGain 固定在主增益之下 0.55 倍。
+ * API（与旧版兼容，调用点零改动）：
+ *  - initBgm / setBgmVolume / duckBgm / restoreBgm / stopBgm
+ *  - setBgmScene(sceneId) / setBattleContext(ctx) / clearBattleContext()
+ *  - setRouteProgress(index) / triggerMotif(motifId)
  */
 
-import { getAudioContext, getBgmGain } from "./context";
+import { crossfadeBgm, getAudioContext, getBgmGain } from "./context";
+import {
+  duckFileBgm,
+  isFileBgmMode,
+  playFileBgm,
+  restoreFileBgm,
+  setFileBgmErrorHandler,
+  stopFileBgm,
+} from "./bgmFiles";
 import {
   type MotifId,
   type MotifStep,
   MOTIFS,
   noteToFreq,
+  playGong,
   playPadSwell,
+  playTaiko,
+  playWoodblock,
   scheduleTone,
+  scheduleVoice,
 } from "./synth";
 import type { EnemyType } from "@/types";
 
 const f = (note: string): number => noteToFreq(note);
+
+/* ----------------------------- 文件化 BGM 映射（V3） ----------------------------- */
+
+/**
+ * 每个场景对应的成品 MP3（由 Music Cog 等生成，置于 public/audio/bgm/）。
+ * 文件缺失/加载失败时由 setBgmScene 静默回退到本模块的程序化合成，
+ * 保持「断网可玩、缺素材不影响运行」。文件名遵循素材命名规范。
+ */
+const FILE_TRACKS: Partial<Record<BgmSceneId, string>> = {
+  menu: "/audio/bgm/kepi_bgm_menu.mp3",
+  route: "/audio/bgm/kepi_bgm_route.mp3",
+  battle: "/audio/bgm/kepi_bgm_battle.mp3",
+  battle_final: "/audio/bgm/kepi_bgm_battle_final.mp3",
+  pawn_shop: "/audio/bgm/kepi_bgm_pawn_shop.mp3",
+  campfire: "/audio/bgm/kepi_bgm_campfire.mp3",
+  ending: "/audio/bgm/kepi_bgm_ending.mp3",
+};
+
+/** 本会话内已确认加载失败的 URL，避免反复重试缺失文件。 */
+const failedFileUrls = new Set<string>();
 
 /* ----------------------------- 场景配置 ----------------------------- */
 
@@ -51,13 +84,13 @@ interface LayerConfig {
   padGain: number;
   /** L1 旋律可用动机池（按序轮播），空=该层关闭。 */
   motifPool: MotifId[];
-  /** 旋律步触发概率（0..1）。 */
+  /** 旋律成句概率（0..1，按短语判定）。 */
   melodyDensity: number;
   melodyGain: number;
   /** L2 节奏：每小节打击点数（0=关闭）。 */
   rhythmHitsPerBar: number;
   rhythmGain: number;
-  /** 节奏层噪声中心频率（Hz）。 */
+  /** 节奏层中心频率（Hz，木鱼用）。 */
   rhythmFreq: number;
   tempoBpm: number;
 }
@@ -69,24 +102,24 @@ const SCENES: Record<BgmSceneId, LayerConfig> = {
     padIntervalBars: 2,
     padGain: 0.16,
     motifPool: ["nostalgia"],
-    melodyDensity: 0.55,
-    melodyGain: 0.13,
+    melodyDensity: 0.7,
+    melodyGain: 0.16,
     rhythmHitsPerBar: 1,
     rhythmGain: 0.04,
-    rhythmFreq: 3800,
+    rhythmFreq: 1600,
     tempoBpm: 64,
   },
-  /** 路线推进/备战：行路感，主题 A 变奏 + 脚步木鱼。 */
+  /** 路线推进/备战：行路感，主题 A 变奏 + 脚步木鱼 + 低音脉动。 */
   route: {
     padRoots: ["C2", "G2"],
     padIntervalBars: 2,
     padGain: 0.15,
     motifPool: ["nostalgia"],
-    melodyDensity: 0.45,
-    melodyGain: 0.12,
+    melodyDensity: 0.55,
+    melodyGain: 0.15,
     rhythmHitsPerBar: 2,
-    rhythmGain: 0.05,
-    rhythmFreq: 3200,
+    rhythmGain: 0.055,
+    rhythmFreq: 1500,
     tempoBpm: 72,
   },
   /** 战斗：旋律静默、节奏加密、pad 压低，制造守护压迫。 */
@@ -98,7 +131,7 @@ const SCENES: Record<BgmSceneId, LayerConfig> = {
     melodyDensity: 0,
     melodyGain: 0,
     rhythmHitsPerBar: 4,
-    rhythmGain: 0.08,
+    rhythmGain: 0.09,
     rhythmFreq: 2600,
     tempoBpm: 96,
   },
@@ -108,11 +141,11 @@ const SCENES: Record<BgmSceneId, LayerConfig> = {
     padIntervalBars: 3,
     padGain: 0.12,
     motifPool: ["guilt"],
-    melodyDensity: 0.4,
-    melodyGain: 0.13,
+    melodyDensity: 0.6,
+    melodyGain: 0.16,
     rhythmHitsPerBar: 1,
     rhythmGain: 0.05,
-    rhythmFreq: 2000,
+    rhythmFreq: 1200,
     tempoBpm: 52,
   },
   /** 篝火夜话：暖 pad 回，主题 A 慢奏，火噼啪极疏。 */
@@ -121,11 +154,11 @@ const SCENES: Record<BgmSceneId, LayerConfig> = {
     padIntervalBars: 2,
     padGain: 0.15,
     motifPool: ["nostalgia"],
-    melodyDensity: 0.4,
-    melodyGain: 0.13,
+    melodyDensity: 0.55,
+    melodyGain: 0.16,
     rhythmHitsPerBar: 1,
-    rhythmGain: 0.035,
-    rhythmFreq: 2200,
+    rhythmGain: 0.04,
+    rhythmFreq: 1100,
     tempoBpm: 60,
   },
   /** 结局：全停，让位海浪与朗读。 */
@@ -141,17 +174,17 @@ const SCENES: Record<BgmSceneId, LayerConfig> = {
     rhythmFreq: 2000,
     tempoBpm: 60,
   },
-  /** 终关战斗（battle-7）：主题 A 归乡旋律收束 + 最大压迫节奏。 */
+  /** 终关战斗（battle-7）：主题 A 归乡旋律收束 + 最大压迫节奏 + 强拍大锣。 */
   battle_final: {
     padRoots: ["C2", "G2"],
     padIntervalBars: 2,
     padGain: 0.14,
     motifPool: ["nostalgia"],
-    melodyDensity: 0.3,
-    melodyGain: 0.12,
+    melodyDensity: 0.4,
+    melodyGain: 0.14,
     rhythmHitsPerBar: 6,
-    rhythmGain: 0.1,
-    rhythmFreq: 2400,
+    rhythmGain: 0.11,
+    rhythmFreq: 1400,
     tempoBpm: 104,
   },
 };
@@ -193,18 +226,18 @@ function stageBattleOverrides(stage: number): Partial<LayerConfig> {
   if (stage <= 4) {
     return {
       tempoBpm: 100,                                           // 中期：+4 BPM
-      rhythmGain: 0.09,
-      melodyDensity: 0.08,
-      melodyGain: 0.04,
+      rhythmGain: 0.1,
+      melodyDensity: 0.1,
+      melodyGain: 0.05,
       motifPool: ["guilt"],
     };
   }
   // stage 5-6（非终关）
   return {
     tempoBpm: 104,                                              // 后期：+8 BPM
-    rhythmGain: 0.1,
-    melodyDensity: 0.15,
-    melodyGain: 0.06,
+    rhythmGain: 0.11,
+    melodyDensity: 0.18,
+    melodyGain: 0.07,
     padRoots: ["C2", "G2"],
     motifPool: ["storm"],
   };
@@ -221,9 +254,9 @@ let routeProgress = 0;
 function routeProgressOverrides(index: number): Partial<LayerConfig> {
   if (index <= 2) return {};                                     // 早期：原样
   if (index <= 5) {
-    return { tempoBpm: 76, melodyDensity: 0.5 };                 // 中期：略提速
+    return { tempoBpm: 76, melodyDensity: 0.6 };                 // 中期：略提速
   }
-  return { tempoBpm: 80, melodyDensity: 0.55, rhythmGain: 0.055 }; // 后期：接近 battle 前奏感
+  return { tempoBpm: 80, melodyDensity: 0.65, rhythmGain: 0.06 }; // 后期：接近 battle 前奏感
 }
 
 /* ----------------------------- 调度状态 ----------------------------- */
@@ -245,9 +278,6 @@ let duckMultiplier = 1;
 /** 战斗上下文（GameShell 注入），驱动 battle 场景动态参数覆盖。 */
 let activeContext: BattleContext | null = null;
 
-/** 旋律动机游标：motifId → 当前步索引。 */
-const motifCursors = new Map<MotifId, number>();
-
 const STEPS_PER_BEAT = 2; // 每拍两个八分音符（BGM 步进单位）
 
 function stepSeconds(scene: LayerConfig): number {
@@ -261,6 +291,10 @@ function stepsPerBar(scene: LayerConfig): number {
 /** 场景内某层有效增益 = 层基础 × duck 倍率。 */
 function eff(layerGain: number): number {
   return layerGain * duckMultiplier;
+}
+
+function isBattleLike(): boolean {
+  return currentScene === "battle" || currentScene === "battle_final";
 }
 
 /**
@@ -279,18 +313,13 @@ function resolveScene(): LayerConfig {
   if (activeContext && currentScene === "battle") {
     const enemyMotifs = ENEMY_MOTIF_MAP[activeContext.featuredEnemy] ?? [];
     const stageOverrides = stageBattleOverrides(activeContext.stage);
+    const hasMotif = enemyMotifs.length > 0 || (stageOverrides.motifPool ?? []).length > 0;
     return {
       ...base,
-      // 敌人注入的动机优先于关卡默认动机
       motifPool: enemyMotifs.length > 0 ? enemyMotifs : (stageOverrides.motifPool ?? base.motifPool),
       ...stageOverrides,
-      // 如果敌人没有指定动机且关卡也没有，保持静默
-      melodyDensity: (enemyMotifs.length > 0 || (stageOverrides.motifPool ?? []).length > 0)
-        ? (stageOverrides.melodyDensity ?? base.melodyDensity)
-        : base.melodyDensity,
-      melodyGain: (enemyMotifs.length > 0 || (stageOverrides.motifPool ?? []).length > 0)
-        ? (stageOverrides.melodyGain ?? base.melodyGain)
-        : base.melodyGain,
+      melodyDensity: hasMotif ? (stageOverrides.melodyDensity ?? base.melodyDensity) : base.melodyDensity,
+      melodyGain: hasMotif ? (stageOverrides.melodyGain ?? base.melodyGain) : base.melodyGain,
     };
   }
 
@@ -315,7 +344,7 @@ function schedulePad(scene: LayerConfig, time: number): void {
   playPadSwell(
     scene.padRoots.map((n) => f(n)),
     {
-      type: "sine",
+      type: "triangle",
       durationMs: Math.max(2400, durMs),
       attackMs: 900,
       releaseMs: 1200,
@@ -327,37 +356,76 @@ function schedulePad(scene: LayerConfig, time: number): void {
   );
 }
 
-/* ----------------------------- L1 旋律（主题动机） ----------------------------- */
+/* ----------------------------- L1 旋律（主题动机成句） ----------------------------- */
 
-function scheduleMelody(scene: LayerConfig, time: number): void {
-  const ctx = getAudioContext();
-  const dest = getBgmGain();
-  if (!ctx || !dest || scene.motifPool.length === 0) return;
-  const gain = eff(scene.melodyGain);
-  if (gain <= 0.0001) return;
-  if (Math.random() > scene.melodyDensity) return;
+let melodyNextTime = 0;
+let melodyMotifIdx = 0;
+let melodyNoteIdx = 0;
+let melodyPhraseMotif: MotifId | null = null;
 
-  // 轮播动机，取下一个音
-  const motifId = scene.motifPool[stepIndex % scene.motifPool.length]!;
-  const steps = MOTIFS[motifId] as readonly MotifStep[];
-  const cursor = (motifCursors.get(motifId) ?? 0) % steps.length;
-  const step = steps[cursor]!;
-  motifCursors.set(motifId, cursor + 1);
-
-  // 椰胡颤音质感（detuned pair），区别于纯 sine 的单薄
-  const oscType = motifId === "guilt" ? "sine" : "sine";
-  scheduleTone(f(step.note), time, {
-    type: oscType,
-    durationMs: 520,
-    gain,
-    attackMs: 8,
-    releaseMs: 360,
-    detuneCents: 7,
-    destination: dest,
-  });
+function resetMelody(now: number): void {
+  melodyNextTime = now + 0.1;
+  melodyMotifIdx = 0;
+  melodyNoteIdx = 0;
+  melodyPhraseMotif = null;
 }
 
-/* ----------------------------- L2 节奏（木鱼/扁鼓） ----------------------------- */
+/**
+ * 动机成句调度：把一段动机当作「乐句」按每个音的 beats 连续奏出，
+ * 而非旧版每个 tick 随机敲一个音（那样旋律被压平、毫无句法）。
+ * 短语首音按 melodyDensity 掷骰决定是否奏出，跳过则歇一小节换下一动机。
+ */
+function pumpMelody(scene: LayerConfig, ctx: AudioContext): void {
+  const dest = getBgmGain();
+  if (!dest || scene.motifPool.length === 0 || scene.melodyDensity <= 0) return;
+  const gain = eff(scene.melodyGain);
+  if (gain <= 0.0001) return;
+  const beat = stepSeconds(scene);
+  const pool = scene.motifPool;
+  const horizon = ctx.currentTime + SCHEDULE_AHEAD;
+
+  let guard = 0;
+  while (melodyNextTime < horizon && guard < 64) {
+    guard += 1;
+    if (melodyNoteIdx === 0) {
+      if (melodyPhraseMotif === null) melodyPhraseMotif = pool[melodyMotifIdx % pool.length]!;
+      if (Math.random() > scene.melodyDensity) {
+        // 跳过本短语：歇一小节，换下一动机
+        melodyNextTime += beat * 4;
+        melodyMotifIdx = (melodyMotifIdx + 1) % pool.length;
+        melodyPhraseMotif = pool[melodyMotifIdx % pool.length]!;
+        continue;
+      }
+    }
+    const motifId = melodyPhraseMotif as MotifId;
+    const steps = MOTIFS[motifId] as readonly MotifStep[];
+    const step = steps[melodyNoteIdx]!;
+    const noteBeats = step.beats;
+    const durMs = noteBeats * beat * 1000 * 0.92;
+    // 句尾长音加更长的释放，模拟山歌拖腔
+    const isTail = melodyNoteIdx === steps.length - 1;
+    scheduleVoice(f(step.note), melodyNextTime, {
+      durationMs: durMs,
+      gain,
+      attackMs: 30,
+      releaseMs: Math.max(260, isTail ? durMs * 0.9 : durMs * 0.5),
+      vibratoRate: 5.2,
+      vibratoDepth: 6,
+      glideFromRatio: 0.97, // 山歌起音微上滑
+      destination: dest,
+    });
+    melodyNextTime += noteBeats * beat;
+    melodyNoteIdx += 1;
+    if (melodyNoteIdx >= steps.length) {
+      melodyNoteIdx = 0;
+      melodyMotifIdx = (melodyMotifIdx + 1) % pool.length;
+      melodyPhraseMotif = pool[melodyMotifIdx % pool.length]!;
+      melodyNextTime += beat * 1.5; // 乐句间留白
+    }
+  }
+}
+
+/* ----------------------------- L2 节奏（木鱼 / 战鼓） ----------------------------- */
 
 function scheduleRhythm(scene: LayerConfig, time: number, stepInBar: number): void {
   const ctx = getAudioContext();
@@ -368,36 +436,58 @@ function scheduleRhythm(scene: LayerConfig, time: number, stepInBar: number): vo
 
   const perBar = stepsPerBar(scene);
   const interval = perBar / scene.rhythmHitsPerBar;
-  // 仅在对应步触发
   if (stepInBar % Math.round(interval) !== 0) return;
+  const delay = Math.max(0, time - ctx.currentTime);
+  const accent = stepInBar % perBar === 0;
 
-  // 木鱼感：短带通噪声
-  const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * 0.04));
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i += 1) {
-    data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+  if (isBattleLike()) {
+    // 战鼓：重拍稍强；终关强拍加一记大锣
+    playTaiko({
+      gain: gain * (accent ? 1.15 : 0.8),
+      destination: dest,
+      delaySeconds: delay,
+    });
+    if (accent && currentScene === "battle_final") {
+      playGong({ gain: gain * 0.5, fundamental: 180, destination: dest, delaySeconds: delay });
+    }
+  } else {
+    // 木鱼：行路/篝火/典当的木质脚步
+    playWoodblock(
+      accent ? 1600 : scene.rhythmFreq,
+      {
+        durationMs: accent ? 110 : 80,
+        gain: gain * (accent ? 1.2 : 0.85),
+        destination: dest,
+        delaySeconds: delay,
+      },
+    );
   }
-  const src = ctx.createBufferSource();
-  src.buffer = buffer;
-  const filter = ctx.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = scene.rhythmFreq;
-  filter.Q.value = 1.2;
-  const gainNode = ctx.createGain();
-  gainNode.gain.setValueAtTime(gain, time);
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, time + 0.06);
-  src.connect(filter);
-  filter.connect(gainNode);
-  gainNode.connect(dest);
-  src.start(time);
-  src.stop(time + 0.08);
+}
+
+/* ----------------------------- 低音脉动（行进感） ----------------------------- */
+
+function scheduleBass(scene: LayerConfig, time: number): void {
+  const ctx = getAudioContext();
+  const dest = getBgmGain();
+  if (!ctx || !dest || scene.padRoots.length === 0) return;
+  if (!isBattleLike() && currentScene !== "route") return; // 仅 route/battle
+  const gain = eff(scene.padGain) * 0.9;
+  if (gain <= 0.0001) return;
+  const root = f(scene.padRoots[0]!) / 2; // 低八度根音
+  scheduleTone(root, time, {
+    type: "triangle",
+    durationMs: 360,
+    gain,
+    attackMs: 6,
+    releaseMs: 240,
+    destination: dest,
+  });
 }
 
 /* ----------------------------- L3 主题高光（一次性） ----------------------------- */
 
 /**
- * 触发主题高光：完整奏响一段动机，覆盖 ducking（短时穿透）。
+ * 触发主题高光：完整奏响一段动机（椰胡嗓音），覆盖 ducking（短时穿透）。
  * 用于土楼里程碑、结局归乡收束。
  */
 export function triggerMotif(motifId: MotifId, opts?: { gain?: number }): void {
@@ -406,20 +496,19 @@ export function triggerMotif(motifId: MotifId, opts?: { gain?: number }): void {
   if (!ctx || !dest) return;
   const steps = MOTIFS[motifId] as readonly MotifStep[];
   const beat = stepSeconds(resolveScene());
-  const peak = opts?.gain ?? 0.2;
+  const peak = opts?.gain ?? 0.24;
   let cursor = ctx.currentTime + 0.05;
   for (const s of steps) {
     const dur = s.beats * beat * 1000;
-    scheduleTone(f(s.note), cursor, {
-      type: motifId === "guilt" ? "sine" : "sine",
-      durationMs: dur,
+    scheduleVoice(f(s.note), cursor, {
+      durationMs: dur * 0.92,
       gain: peak,
-      attackMs: 12,
-      releaseMs: 280,
-      detuneCents: 5,
+      attackMs: 20,
+      releaseMs: 320,
+      vibratoDepth: 7,
       destination: dest,
     });
-    cursor += (dur / 1000) * 0.9;
+    cursor += s.beats * beat * 0.95;
   }
 }
 
@@ -437,16 +526,16 @@ function runScheduler(): void {
     if (stepInBar === 0 && stepIndex % (barLen * scene.padIntervalBars) === 0) {
       schedulePad(scene, nextStepTime);
     }
-    // L1 旋律：偶数步
-    if (stepIndex % 2 === 0) {
-      scheduleMelody(scene, nextStepTime);
-    }
     // L2 节奏
     scheduleRhythm(scene, nextStepTime, stepInBar);
+    // 低音脉动：每小节首拍
+    if (stepInBar === 0) scheduleBass(scene, nextStepTime);
 
     nextStepTime += stepSeconds(scene);
     stepIndex += 1;
   }
+  // L1 旋律独立时钟（成句调度，不受 step 网格束缚）
+  pumpMelody(scene, ctx);
 }
 
 function startScheduler(): void {
@@ -454,7 +543,7 @@ function startScheduler(): void {
   if (!ctx) return;
   nextStepTime = ctx.currentTime + 0.12;
   stepIndex = 0;
-  motifCursors.clear();
+  resetMelody(ctx.currentTime);
   // 立即播一次 pad（使用解析后配置，包含 route 渐强等）
   schedulePad(resolveScene(), nextStepTime);
   schedulerTimer = window.setInterval(runScheduler, LOOKAHEAD_MS);
@@ -469,6 +558,17 @@ export function initBgm(volume?: number): void {
   void ctx.resume().catch(() => undefined);
   if (running) return;
   running = true;
+
+  // 注册文件化 BGM 加载失败回退（缺素材时复用程序化合成）
+  setFileBgmErrorHandler((url) => {
+    if (url) failedFileUrls.add(url);
+    // 当前场景仍对应失败文件时，启动程序化兜底
+    const cur = FILE_TRACKS[currentScene];
+    if ((!cur || failedFileUrls.has(cur)) && currentScene !== "ending" && running) {
+      if (schedulerTimer === null) startScheduler();
+    }
+  });
+
   if (volume !== undefined) {
     const clamped = Math.max(0, Math.min(1, volume));
     const dest = getBgmGain();
@@ -477,16 +577,33 @@ export function initBgm(volume?: number): void {
   startScheduler();
 }
 
-/** 切换音乐场景（按 phase/journey）。ending 场景会停止调度层但保留 duck 状态。 */
+/**
+ * 切换音乐场景（按 phase/journey）。
+ * V3：优先播放成品 MP3（文件化 BGM），缺失时静默回退到程序化合成。
+ * ending 场景若已有文件则作为朗读底噪播放，否则停调度让位海浪/朗读。
+ */
 export function setBgmScene(sceneId: BgmSceneId): void {
-  if (currentScene === sceneId) return;
+  if (currentScene === sceneId && !isFileBgmMode()) return;
   currentScene = sceneId;
-  motifCursors.clear();
+  const ctx = getAudioContext();
+  if (ctx) resetMelody(ctx.currentTime);
   // 离开战斗时清除战斗上下文
   if (sceneId !== "battle" && sceneId !== "battle_final") {
     activeContext = null;
   }
-  // ending 场景：直接停调度（让位海浪/朗读）
+
+  // 优先走文件化 BGM
+  const url = FILE_TRACKS[sceneId];
+  if (url && !failedFileUrls.has(url)) {
+    if (playFileBgm(url)) {
+      stopScheduler(); // 文件模式：停程序化调度（ending 由文件承载）
+      crossfadeBgm(); // 程序化总线淡入淡出（无副作用）
+      return;
+    }
+  }
+
+  // 回退：程序化合成
+  crossfadeBgm();
   if (sceneId === "ending") {
     stopScheduler();
     return;
@@ -503,14 +620,15 @@ export function setBgmScene(sceneId: BgmSceneId): void {
  */
 export function setBattleContext(ctx: BattleContext): void {
   activeContext = ctx;
-  // 切上下文后重置旋律游标，让新动机立即生效
-  motifCursors.clear();
+  const c = getAudioContext();
+  if (c) resetMelody(c.currentTime);
 }
 
 /** 清除战斗上下文（离开战斗 phase 时调用）。 */
 export function clearBattleContext(): void {
   activeContext = null;
-  motifCursors.clear();
+  const c = getAudioContext();
+  if (c) resetMelody(c.currentTime);
 }
 
 /**
@@ -532,10 +650,12 @@ export function setBgmVolume(volume: number): void {
 
 export function duckBgm(ratio = 0.32): void {
   duckMultiplier = Math.max(0, Math.min(1, ratio));
+  duckFileBgm(ratio);
 }
 
 export function restoreBgm(): void {
   duckMultiplier = 1;
+  restoreFileBgm();
 }
 
 function stopScheduler(): void {
@@ -545,8 +665,14 @@ function stopScheduler(): void {
   }
 }
 
+/** 仅停程序化调度（文件化 BGM 仍播放，用于结局底噪场景）。 */
+export function stopProceduralBgm(): void {
+  stopScheduler();
+}
+
 export function stopBgm(): void {
   running = false;
   stopScheduler();
+  stopFileBgm();
   // 让余音自然衰减，不强制停 osc（避免咔哒声）
 }
