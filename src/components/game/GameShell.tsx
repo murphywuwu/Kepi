@@ -53,6 +53,9 @@ export function GameShell() {
   const setDomPieceInspect = useUIStore((state) => state.setDomPieceInspect);
   const prepSubview = useUIStore((state) => state.prepSubview);
   const { phase, state } = snapshot;
+  const settlementCinematicActive = useUIStore(
+    (s) => s.settlementCinematicActive,
+  );
   const narrativeShell = isNarrativePhase(phase);
   const prepActive = phase === "prep" && isPrepInteractive(prepSubview);
 
@@ -152,7 +155,11 @@ export function GameShell() {
 
   return (
     <>
-      <GameChrome prepActive={prepActive} railDimmed={phase === "prep" && !prepActive}>
+      <GameChrome
+        prepActive={prepActive}
+        railDimmed={phase === "prep" && !prepActive}
+        railHidden={settlementCinematicActive}
+      >
         <GameCanvas
           snapshot={snapshot}
           selectedPieceId={selectedPieceId}

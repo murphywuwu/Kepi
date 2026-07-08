@@ -10,10 +10,16 @@ import { BenchStrip } from "./ShopStrip";
 type GameChromeProps = {
   prepActive: boolean;
   railDimmed?: boolean;
+  railHidden?: boolean;
   children: ReactNode;
 };
 
-export function GameChrome({ prepActive, railDimmed = false, children }: GameChromeProps) {
+export function GameChrome({
+  prepActive,
+  railDimmed = false,
+  railHidden = false,
+  children,
+}: GameChromeProps) {
   return (
     <div className={cn("kepi-game-chrome relative h-[100dvh] w-full overflow-hidden")}>
       <main className="kepi-chrome-stage kepi-scene-vignette">{children}</main>
@@ -22,7 +28,7 @@ export function GameChrome({ prepActive, railDimmed = false, children }: GameChr
         <HudBar embedded />
       </header>
 
-      <JourneySideRail dimmed={railDimmed} />
+      {!railHidden ? <JourneySideRail dimmed={railDimmed} /> : null}
 
       {prepActive ? (
         <>
