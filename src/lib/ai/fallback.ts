@@ -17,7 +17,7 @@ export function pickFallbackLetter(input: AIPromptInput): AILetterResponse {
   return {
     title: letter.title,
     body: letter.body,
-    source: "本地降级文案池",
+    source: "番客自叙",
   };
 }
 
@@ -34,7 +34,7 @@ export function pickFallbackLetters(
     letters.push({
       title: item.title,
       body: item.body,
-      source: "本地降级文案池",
+      source: "番客自叙",
     });
   }
 

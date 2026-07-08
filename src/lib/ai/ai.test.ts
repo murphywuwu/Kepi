@@ -154,7 +154,7 @@ describe("pickFallbackLetter", () => {
     const b = pickFallbackLetter(sampleInput);
     expect(a.title).toBe(b.title);
     expect(a.body).toBe(b.body);
-    expect(a.source).toBe("本地降级文案池");
+    expect(a.source).toBe("番客自叙");
   });
 
   it("returns multiple fallbacks for batch requests", () => {
@@ -242,7 +242,7 @@ describe("ai schemas", () => {
 
   it("validates letter response shape", () => {
     const parsed = aiLetterResponseSchema.safeParse({
-      title: "番客家书",
+      title: "今寄银贰元",
       body: "阿爸阿妈，儿一切安好。",
     });
     expect(parsed.success).toBe(true);

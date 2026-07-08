@@ -9,7 +9,7 @@ import {
   type EndingNarrativeContext,
 } from "@/data/letters";
 import { ASSET_MANIFEST } from "@/data/assets";
-import { requestDigitalLetters } from "@/lib/ai/client";
+import { requestDigitalLetter } from "@/lib/ai/client";
 import type { AILetterResponse, AIPromptInput } from "@/lib/ai/types";
 import { endingArtworkSrc } from "@/lib/game/endingUi";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { GameIcon, WoodButton } from "@/components/game/ui";
 import { GestureLayer, type GestureMode } from "./GestureLayer";
 import {
-  DigitalLetterCard,
+  DigitalLetterScroll,
   LetterPicker,
   LetterViewer,
 } from "./LetterViewer";
@@ -54,7 +54,8 @@ export function EndingScene({
   const [caughtCount, setCaughtCount] = useState(0);
   const [slowTime, setSlowTime] = useState(false);
   const [selectedLetterIndex, setSelectedLetterIndex] = useState(0);
-  const [digitalLetters, setDigitalLetters] = useState<AILetterResponse[]>([]);
+  const [digitalNarrative, setDigitalNarrative] =
+    useState<AILetterResponse | null>(null);
   const [loadingDigital, setLoadingDigital] = useState(true);
 
   const copy = ENDING_SCENE_COPY[endingType];
@@ -98,21 +99,20 @@ export function EndingScene({
   useEffect(() => {
     let cancelled = false;
 
-    async function loadDigitalLetters() {
+    async function loadDigitalNarrative() {
       setLoadingDigital(true);
-      const count = Math.max(1, Math.min(narrative.kebi, 3));
-      const results = await requestDigitalLetters(aiInput, count);
+      const result = await requestDigitalLetter(aiInput);
       if (!cancelled) {
-        setDigitalLetters(results.map((item) => item.letter));
+        setDigitalNarrative(result.letter);
         setLoadingDigital(false);
       }
     }
 
-    void loadDigitalLetters();
+    void loadDigitalNarrative();
     return () => {
       cancelled = true;
     };
-  }, [aiInput, narrative.kebi]);
+  }, [aiInput]);
 
   const handleCatch = useCallback(() => {
     setCaughtCount((prev) => {
@@ -262,24 +262,6 @@ export function EndingScene({
             />
             <LetterViewer letter={archivalLetters[selectedLetterIndex]!} />
 
-            <div className="space-y-3">
-              <h2 className="text-center text-sm font-medium text-amber-100">
-                沿途数字客批
-                {loadingDigital ? "（加载中…）" : null}
-              </h2>
-              <div className="grid gap-3 md:grid-cols-2">
-                {digitalLetters.map((letter, index) => (
-                  <DigitalLetterCard
-                    key={`${letter.title}-${index}`}
-                    title={letter.title}
-                    body={letter.body}
-                    source={letter.source}
-                    fromAI={letter.source === "AI 生成"}
-                  />
-                ))}
-              </div>
-            </div>
-
             {step === "reading" ? (
               <div className="flex justify-center">
                 <WoodButton
@@ -295,7 +277,7 @@ export function EndingScene({
         ) : null}
 
         {step === "finale" ? (
-          <footer className="space-y-4 text-center">
+          <footer className="space-y-6 text-center">
             <div
               className="kepi-ending-subtitle-mask relative mx-auto max-w-2xl px-4 py-5"
               style={{
@@ -308,6 +290,17 @@ export function EndingScene({
                 {endingSubtitle(endingType, narrative)}
               </p>
             </div>
+
+            {/* Digital narrative scrolling display */}
+            {loadingDigital ? (
+              <p className="text-xs text-amber-100/60">数字客批加载中…</p>
+            ) : digitalNarrative ? (
+              <DigitalLetterScroll
+                title={digitalNarrative.title}
+                narrative={digitalNarrative.body}
+              />
+            ) : null}
+
             <div className="flex flex-wrap justify-center gap-3">
               {onComplete ? (
                 <WoodButton
