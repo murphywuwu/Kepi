@@ -5,10 +5,7 @@ import { useCallback, useRef, useState, type CSSProperties } from "react";
 import { ASSET_MANIFEST } from "@/data/assets";
 import { currentJourneyNode } from "@/engine";
 import { BLOOD_DEBT_GOLD, PAWN_KEBI_GOLD } from "@/engine/constants";
-import {
-  playPawnGoldSfx,
-  playPawnStampSfx,
-} from "@/lib/audio/battleSfx";
+import { playPawnGoldSfx, playPawnStampSfx } from "@/lib/audio/battleSfx";
 import { useGameStore } from "@/store/gameStore";
 import { useUIStore } from "@/store/uiStore";
 import { cn } from "@/lib/utils";
@@ -87,7 +84,10 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
       window.setTimeout(() => {
         dispatch({ type: "PAWN_KEBI" });
         const next = useGameStore.getState().snapshot.state;
-        pushToast(`当信 +${PAWN_KEBI_GOLD} 金币（客批 ${next.kebi}/${next.kebiThreshold}）`, "default");
+        pushToast(
+          `当信 +${PAWN_KEBI_GOLD} 金币（客批 ${next.kebi}/${next.kebiThreshold}）`,
+          "default",
+        );
         setResultPulse("pawn");
         setRitual("idle");
         window.setTimeout(() => setResultPulse(null), 1200);
@@ -135,10 +135,7 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
     window.setTimeout(() => {
       dispatch({ type: "BORROW_AGAINST_RETURN" });
       const next = useGameStore.getState().snapshot.state;
-      pushToast(
-        `透支未来 +${BLOOD_DEBT_GOLD} 金，归乡需 ${next.kebiThreshold} 封客批`,
-        "default",
-      );
+      pushToast(`透支未来 +${BLOOD_DEBT_GOLD} 金，归乡需 ${next.kebiThreshold} 封客批`, "default");
       setResultPulse("borrow");
       setSealFlash(false);
       window.setTimeout(() => setResultPulse(null), 1200);
@@ -160,10 +157,7 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
       : CINEMATICS.pawnLetterIntact;
 
   return (
-    <div
-      className="kepi-pawn-shop-scene absolute inset-0 z-30 overflow-hidden"
-      aria-live="polite"
-    >
+    <div className="kepi-pawn-shop-scene absolute inset-0 z-30 overflow-hidden" aria-live="polite">
       <div className="kepi-pawn-shop-vignette absolute inset-0" aria-hidden>
         <Image
           src={CINEMATICS.pawnShopVignette}
@@ -176,7 +170,10 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
       </div>
 
       {ritual === "gold" ? (
-        <div className="kepi-pawn-gold-burst pointer-events-none absolute inset-0 z-[2]" aria-hidden>
+        <div
+          className="kepi-pawn-gold-burst pointer-events-none absolute inset-0 z-[2]"
+          aria-hidden
+        >
           <Image
             src={CINEMATICS.pawnGoldFall}
             alt=""
@@ -188,7 +185,10 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
       ) : null}
 
       {sealFlash ? (
-        <div className="kepi-pawn-seal-flash pointer-events-none absolute inset-0 z-[3]" aria-hidden>
+        <div
+          className="kepi-pawn-seal-flash pointer-events-none absolute inset-0 z-[3]"
+          aria-hidden
+        >
           <Image
             src={CINEMATICS.bloodDebtSeal}
             alt=""
@@ -199,125 +199,131 @@ function PawnShopCinematic({ nodeLabel }: { nodeLabel: string }) {
         </div>
       ) : null}
 
-      <div className="relative flex h-full flex-col px-[5%] pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(7.5rem,calc(env(safe-area-inset-top)+6.75rem))] sm:pt-[max(8.25rem,calc(env(safe-area-inset-top)+7.25rem))]">
+      <div className="relative flex h-full flex-col px-[5%] pt-[max(7.5rem,calc(env(safe-area-inset-top)+6.75rem))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:pt-[max(8.25rem,calc(env(safe-area-inset-top)+7.25rem))]">
         <div className="pointer-events-none text-center">
           <p className="text-[0.65rem] font-medium tracking-[0.18em] text-amber-200/75">
             客批典当行
           </p>
           <h2 className="mt-1 text-xl font-bold text-amber-50 sm:text-2xl">{nodeLabel}</h2>
-          <p className="mt-2 text-xs text-amber-100/82 sm:text-sm">
+          <p className="mt-1 text-xs text-amber-100/82 sm:text-sm">
             当信换金币，或透支未来的归乡阈值。
           </p>
         </div>
 
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col items-center justify-center gap-5 py-3 transition-[margin] duration-500 ease-out mb-5 sm:mb-8",
-          )}
-        >
-          <div className="kepi-pawn-letter-stage pointer-events-auto relative flex flex-col items-center">
-            {letterGone && ritual === "idle" ? (
-              <div className="kepi-pawn-letter-gone mx-auto flex aspect-[220/280] w-[min(42vw,11rem)] items-center justify-center sm:w-[12.5rem]">
-                <span className="kepi-pawn-letter-vanish-glow" aria-hidden />
-                <p className="kepi-pawn-letter-gone-msg" aria-live="polite">
-                  信已当尽
-                  <br />
-                  再无可典之批
-                </p>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className={cn(
-                  "kepi-pawn-letter-btn relative block",
-                  !canPawn && "kepi-pawn-letter-btn--disabled",
-                  ritual === "holding" && "kepi-pawn-letter-btn--holding",
-                  (ritual === "burning" || ritual === "gold") && "kepi-pawn-letter-btn--burning",
-                )}
-                disabled={!canPawn}
-                aria-label="长按燃烧客批信件"
-                onPointerDown={(event) => {
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  beginHold();
-                }}
-                onPointerUp={clearHold}
-                onPointerLeave={clearHold}
-                onPointerCancel={clearHold}
-              >
-                {ritual === "holding" ? (
-                  <span
-                    className="kepi-pawn-hold-ring"
-                    style={{ "--kepi-hold-progress": holdProgress } as CSSProperties}
-                    aria-hidden
-                  />
-                ) : null}
-                <Image
-                  src={letterSrc}
-                  alt=""
-                  width={220}
-                  height={280}
+        <div className="kepi-pawn-scroll mb-2 flex min-h-0 flex-1 flex-col overflow-y-auto py-1 sm:mb-3">
+          <div className="my-auto flex flex-col items-center gap-3">
+            <div className="kepi-pawn-letter-stage pointer-events-auto relative flex flex-col items-center">
+              {letterGone && ritual === "idle" ? (
+                <div className="kepi-pawn-letter-gone mx-auto flex aspect-[220/280] w-[min(32vw,7rem)] items-center justify-center sm:w-[9.5rem]">
+                  <span className="kepi-pawn-letter-vanish-glow" aria-hidden />
+                  <p className="kepi-pawn-letter-gone-msg" aria-live="polite">
+                    信已当尽
+                    <br />
+                    再无可典之批
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
                   className={cn(
-                    "kepi-pawn-letter-image mx-auto h-auto w-[min(42vw,11rem)] object-contain drop-shadow-2xl sm:w-[12.5rem]",
-                    ritual === "burning" && "kepi-pawn-letter-image--burn",
-                    (ritual === "gold" || letterGone) && "kepi-pawn-letter-image--ash",
-                    letterGone && "kepi-pawn-letter-image--vanish",
+                    "kepi-pawn-letter-btn relative block",
+                    !canPawn && "kepi-pawn-letter-btn--disabled",
+                    ritual === "holding" && "kepi-pawn-letter-btn--holding",
+                    (ritual === "burning" || ritual === "gold") && "kepi-pawn-letter-btn--burning",
                   )}
-                  priority
-                />
-              </button>
-            )}
-            {!letterGone ? (
-              <p className="mt-3 text-center text-[0.65rem] tracking-[0.12em] text-amber-200/78">
-                长按信纸，燃烧当信
-              </p>
-            ) : null}
-          </div>
+                  disabled={!canPawn}
+                  aria-label="长按燃烧客批信件"
+                  onPointerDown={(event) => {
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    beginHold();
+                  }}
+                  onPointerUp={clearHold}
+                  onPointerLeave={clearHold}
+                  onPointerCancel={clearHold}
+                >
+                  {ritual === "holding" ? (
+                    <span
+                      className="kepi-pawn-hold-ring"
+                      style={{ "--kepi-hold-progress": holdProgress } as CSSProperties}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <Image
+                    src={letterSrc}
+                    alt=""
+                    width={220}
+                    height={280}
+                    className={cn(
+                      "kepi-pawn-letter-image mx-auto h-auto w-[min(32vw,7rem)] object-contain drop-shadow-2xl sm:w-[9.5rem]",
+                      ritual === "burning" && "kepi-pawn-letter-image--burn",
+                      (ritual === "gold" || letterGone) && "kepi-pawn-letter-image--ash",
+                      letterGone && "kepi-pawn-letter-image--vanish",
+                    )}
+                    priority
+                  />
+                </button>
+              )}
+              {!letterGone ? (
+                <p className="mt-2 text-center text-[0.65rem] tracking-[0.12em] text-amber-200/78">
+                  长按信纸，燃烧当信
+                </p>
+              ) : null}
+            </div>
 
-          <div
-            className={cn(
-              "kepi-pawn-choice-split pointer-events-auto w-full max-w-2xl transition-[margin] duration-500 ease-out",
-              letterGone && "-mt-3 sm:-mt-5",
-            )}
-          >
-            <PawnActionCard
-              eyebrow="防守"
-              title="当信"
-              description={`-1 客批，+${PAWN_KEBI_GOLD} 金。长按上方信纸完成仪式。`}
-              icon={UI.pawnKebi}
-              effectLabel={`+${PAWN_KEBI_GOLD} 金币`}
-              tone="pawn"
-              active={ritual === "holding" || ritual === "burning" || ritual === "gold"}
-            />
-            <span className="kepi-pawn-choice-split__seam" aria-hidden />
-            <PawnActionCard
-              eyebrow="进攻"
-              title="透支未来"
-              description={`+${BLOOD_DEBT_GOLD} 金，归乡阈值 +1。未来的路更长更险。`}
-              icon={UI.bloodDebt}
-              effectLabel="阈值 +1"
-              tone="debt"
-              disabled={busy}
-              active={sealFlash}
-              onActivate={borrow}
-            />
-          </div>
+            <div
+              className={cn(
+                "kepi-pawn-choice-split pointer-events-auto w-full max-w-2xl transition-[margin] duration-500 ease-out",
+                letterGone && "-mt-2 sm:-mt-3",
+              )}
+            >
+              <PawnActionCard
+                eyebrow="防守"
+                title="当信"
+                description={`-1 客批，+${PAWN_KEBI_GOLD} 金。长按上方信纸完成仪式。`}
+                icon={UI.pawnKebi}
+                effectLabel={`+${PAWN_KEBI_GOLD} 金币`}
+                tone="pawn"
+                active={ritual === "holding" || ritual === "burning" || ritual === "gold"}
+              />
+              <span className="kepi-pawn-choice-split__seam" aria-hidden />
+              <PawnActionCard
+                eyebrow="进攻"
+                title="透支未来"
+                description={`+${BLOOD_DEBT_GOLD} 金，归乡阈值 +1。未来的路更长更险。`}
+                icon={UI.bloodDebt}
+                effectLabel="阈值 +1"
+                tone="debt"
+                disabled={busy}
+                active={sealFlash}
+                onActivate={borrow}
+              />
+            </div>
 
-          <div
-            className={cn(
-              "kepi-pawn-stats pointer-events-none grid w-full max-w-md grid-cols-2 gap-2 text-center text-xs transition-[margin] duration-500 ease-out sm:grid-cols-4",
-              resultPulse && "kepi-pawn-stats--pulse",
-              letterGone && "-mt-2 sm:-mt-3 [transition-delay:120ms]",
-            )}
-          >
-            <StatChip icon={UI.kebi} label="客批" value={`${state.kebi}/${state.kebiThreshold}`} />
-            <StatChip icon={UI.gold} label="金币" value={String(state.gold)} />
-            <StatChip icon={UI.bloodDebt} label="透支" value={`${state.bloodDebtCount} 次`} />
-            <StatChip icon={UI.homewardTicket} label="归乡" value={`需 ${state.kebiThreshold} 封`} />
+            <div
+              className={cn(
+                "kepi-pawn-stats pointer-events-none grid w-full max-w-md grid-cols-2 gap-2 text-center text-xs transition-[margin] duration-500 ease-out sm:grid-cols-4",
+                resultPulse && "kepi-pawn-stats--pulse",
+                letterGone && "-mt-1 [transition-delay:120ms] sm:-mt-2",
+              )}
+            >
+              <StatChip
+                icon={UI.kebi}
+                label="客批"
+                value={`${state.kebi}/${state.kebiThreshold}`}
+              />
+              <StatChip icon={UI.gold} label="金币" value={String(state.gold)} />
+              <StatChip icon={UI.bloodDebt} label="透支" value={`${state.bloodDebtCount} 次`} />
+              <StatChip
+                icon={UI.homewardTicket}
+                label="归乡"
+                value={`需 ${state.kebiThreshold} 封`}
+              />
+            </div>
           </div>
         </div>
 
         <WoodButton
-          className="kepi-pawn-leave pointer-events-auto mx-auto w-full shrink-0 max-w-xs"
+          className="kepi-pawn-leave pointer-events-auto mx-auto w-full max-w-xs shrink-0"
           variant="primary"
           disabled={busy}
           onClick={leave}
@@ -386,22 +392,14 @@ function PawnActionCard({
   );
 }
 
-function StatChip({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) {
+function StatChip({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <div className="kepi-pawn-stat-chip rounded-md px-2 py-1.5">
+    <div className="kepi-pawn-stat-chip rounded-md px-2 py-1">
       <span className="inline-flex items-center justify-center gap-1 text-[0.625rem] text-amber-100/75">
         <GameIcon src={icon} size={14} />
         {label}
       </span>
-      <p className="mt-0.5 text-sm font-semibold tabular-nums text-amber-50">{value}</p>
+      <p className="mt-0.5 text-sm font-semibold text-amber-50 tabular-nums">{value}</p>
     </div>
   );
 }
